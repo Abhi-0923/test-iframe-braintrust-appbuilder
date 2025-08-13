@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Dynamic React App Runner</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    
+    <!-- Import map shim so we can inject import maps programmatically -->
+    <script async src="https://unpkg.com/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
+    
+    <!-- Babel standalone for JSX/TSX transpile in browser -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <style>
+        body {
+            margin: 0;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+            background: #fafafa;
+        }
+        
+        #app {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        #toolbar {
+            background: #111827;
+            color: #e5e7eb;
+            padding: 8px 12px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        #status {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        button {
+            background: #374151;
+            color: #e5e7eb;
+            border: 1px solid #4b5563;
+            border-radius: 4px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        button:hover {
+            background: #4b5563;
+        }
+        
+        #mount {
+            flex: 1;
+            display: block;
+            padding: 16px;
+        }
+        
+        #error {
+            color: #b91c1c;
+            white-space: pre-wrap;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            display: none;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 12px;
+        }
+        
+        #log {
+            font-size: 12px;
+            color: #6b7280;
+            padding: 0 12px 12px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div id="toolbar">
+            <div id="status">Waiting for app files via postMessage (event.data.output)...</div>
+            <button id="unmountBtn" title="Unmount the current React app">Unmount</button>
+            <button id="clearBtn" title="Clear logs">Clear logs</button>
+        </div>
+        <div id="error"></div>
+        <div id="mount">
+            <div id="root"></div>
+        </div>
+        <div id="log"></div>
+    </div>
+
+    <script type="module">
+        // Basic environment/polyfills some libs expect
+        // React dev builds sometimes check process.env.NODE_ENV
+        window.process = window.process || { 
+            env: { 
+                NODE_ENV: 'development' 
+            } 
+        };
+
+        const logEl = document.getElementById('log');
+        const errorEl = document.getElementById('error');
+        const statusEl = document.getElementById('status');
+        const rootEl = document.getElementById('root');
+        const unmountBtn = document.getElementById('unmountBtn');
+        const clearBtn = document.getElementById('clearBtn');
+
+        function log(...args) {
+            console.log(...args);
+            try {
+                const line = args.map(a => 
+                    typeof a === 'string' ? a : JSON.stringify(a, null, 2)
+                ).join(' ');
+                logEl.textContent += (line + '\n');
+            } catch {
+                // ignore JSON stringify errors
+            }
+        }
+
+        function setStatus(text) {
+            statusEl.textContent = text;
+        }
+
+        function showError(msg, err) {
+            errorEl.style.display = 'block';
+            errorEl.textContent = (msg || 'Error:') + '\n' + 
+                (err && (err.stack || err.message || String(err)) || '');
+        }
+
+        function clearError() {
+            errorEl.style.display = 'none';
+            errorEl.textContent = '';
+        }
+
+        clearBtn.onclick = () => {
+            logEl.textContent = '';
+        };
+
+        unmountBtn.onclick = () => {
+            unmountCurrentApp();
+            setStatus('Unmounted');
+        };
+
+        // Keep state for cleanup between runs
+        let current = {
+            blobUrls: new Map(), // path -> blobURL
+            moduleScript: null, // <script type="module" src="..."> for bootstrap
+            bootstrapUrl: null, // blob URL of bootstrap module
+            importMapEl: null, // <script type="importmap">
+            reactRoot: null, // React root instance (createRoot)
+        };
+
+        function revokeAllBlobs() {
+            try {
+                if (current.bootstrapUrl) URL.revokeObjectURL(current.bootstrapUrl);
+            } catch {}
+            current.bootstrapUrl = null;
+
+            try {
+                for (const url of current.blobUrls.values()) URL.revokeObjectURL(url);
+            } catch {}
+            current.blobUrls.clear();
+        }
+
+        function unmountCurrentApp() {
+            try {
+                if (current.reactRoot) {
+                    current.reactRoot.unmount();
+                } else {
+                    // In case app used ReactDOM.render or self-mounted, clear root node
+                    rootEl.innerHTML = '';
+                }
+            } catch (e) {
+                log('Unmount error:', e);
+            } finally {
+                current.reactRoot = null;
+            }
+
+            // Remove previous module script (bootstrap)
+            if (current.moduleScript && current.moduleScript.parentNode) {
+                current.moduleScript.parentNode.removeChild(current.moduleScript);
+            }
+            current.moduleScript = null;
+
+            // Remove previous import map
+            if (current.importMapEl && current.importMapEl.parentNode) {
+                current.importMapEl.parentNode.removeChild(current.importMapEl);
+            }
+            current.importMapEl = null;
+
+            revokeAllBlobs();
+        }
+
+        // Utility: normalize and resolve paths
+        function normalizePath(p) {
+            if (!p) return '';
+            // Strip leading ./ or /
+            p = p.replace(/^[.\\/]+/, '');
+            // Normalize slashes
+            p = p.replace(/\\/g, '/');
+            // Resolve ./ and ../ segments
+            const parts = [];
+            for (const seg of p.split('/')) {
+                if (!seg || seg === '.') continue;
+                if (seg === '..') parts.pop();
+                else parts.push(seg);
+            }
+            return parts.join('/');
+        }
+
+        function dirOf(p) {
+            const i = p.lastIndexOf('/');
+            return i === -1 ? '' : p.slice(0, i);
+        }
+
+        function resolveRelative(spec, fromPath) {
+            // fromPath is file path like "components/A.jsx"
+            const baseDir = dirOf(fromPath);
+            const joined = normalizePath((baseDir ? baseDir + '/' : '') + spec);
+            return joined;
+        }
+
+        function ensureExt(p, fileSet) {
+            // If p already has an extension, keep it; else try common ones.
+            if (/\.(jsx?|tsx?)$/.test(p)) return p;
+            const candidates = [p + '.jsx', p + '.tsx', p + '.js', p + '.ts'];
+            for (const c of candidates) if (fileSet.has(c)) return c;
+            return p; // fall back (may break if missing extension)
+        }
+
+        // Extract array of {filePath, fileContent} from message
+        function extractFiles(payload) {
+            // Accept either {output: [...] } or [...] directly
+            const arr = Array.isArray(payload?.output) ? payload.output : 
+                       (Array.isArray(payload) ? payload : null);
+            if (!Array.isArray(arr)) return [];
+
+            // Your items look like { args: { filePath, fileContent, operation } }
+            const files = [];
+            for (const item of arr) {
+                const args = item?.args || item; // support either nesting or direct
+                const filePath = args?.filePath;
+                const fileContent = args?.fileContent;
+                const operation = args?.operation;
+
+                if (!filePath || typeof fileContent !== 'string') continue;
+                if (operation && operation !== 'add' && operation !== 'update') continue;
+
+                files.push({ 
+                    filePath: normalizePath(filePath), 
+                    fileContent 
+                });
+            }
+            return files;
+        }
+
+        // Detect entry module (prefer index.*)
+        function detectEntry(files) {
+            const names = files.map(f => f.filePath.toLowerCase());
+            const prefer = [
+                'index.jsx', 'index.tsx', 'index.js', 'index.ts',
+                'src/index.jsx', 'src/index.tsx', 'src/index.js', 'src/index.ts'
+            ];
+
+            for (const p of prefer) {
+                const i = names.indexOf(p);
+                if (i !== -1) return files[i].filePath;
+            }
+
+            // Fallback: first JSX/TSX, else first JS/TS, else first
+            for (const f of files) if (/\.(jsx|tsx)$/.test(f.filePath)) return f.filePath;
+            for (const f of files) if (/\.(js|ts)$/.test(f.filePath)) return f.filePath;
+            return files[0]?.filePath || null;
+        }
+
+        // Collect external bare imports
+        function collectExternalImports(files) {
+            const rxStatic = /(?:import|export)\s+(?:[^'"]*from\s+)?['"]([^'"]+)['"]/g;
+            const rxDynamic = /import\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
+            const externals = new Set();
+
+            for (const f of files) {
+                const code = f.fileContent;
+                let m;
+
+                while ((m = rxStatic.exec(code))) {
+                    const spec = m[1];
+                    if (!spec.startsWith('.') && !spec.startsWith('/')) externals.add(spec);
+                }
+
+                while ((m = rxDynamic.exec(code))) {
+                    const spec = m[1];
+                    if (!spec.startsWith('.') && !spec.startsWith('/')) externals.add(spec);
+                }
+            }
+
+            return externals;
+        }
+
+        // Rewrite relative imports to VFS bare specifiers like vfs:/path/to/file.ext
+        function rewriteToVfsSpecifiers(code, fromPath, fileSet) {
+            const rx = /((?:import|export)\s+(?:[^'"]*from\s+)?|import\s*\()\s*(['"])([^'"]+)\2/g;
+            return code.replace(rx, (full, pre, quote, spec) => {
+                if (spec.startsWith('.')) {
+                    let resolved = resolveRelative(spec, fromPath);
+                    resolved = ensureExt(resolved, fileSet);
+                    const vfsSpec = 'vfs:/' + resolved;
+                    return pre + quote + vfsSpec + quote;
+                }
+                return full; // leave bare and absolute imports unchanged
+            });
+        }
+
+        // Transpile a file using Babel Standalone
+        function transpile(code, filename) {
+            return Babel.transform(code, {
+                filename,
+                presets: [
+                    ['env', { targets: { esmodules: true } }],
+                    'react',
+                    'typescript'
+                ],
+                // Keep ESM imports/exports intact
+                sourceType: 'module',
+                plugins: [],
+                sourceMaps: 'inline',
+                retainLines: true
+            }).code + `\n//# sourceURL=${filename}\n`;
+        }
+
+        // Build and mount app from files
+        async function buildAndMountApp(files) {
+            clearError();
+            setStatus('Building app...');
+            unmountCurrentApp();
+
+            // Prepare file maps
+            const fileSet = new Set(files.map(f => f.filePath));
+            const entry = detectEntry(files);
+            if (!entry) throw new Error('No entry file detected');
+
+            // Transpile and rewrite relative imports to VFS specifiers
+            const transpiled = new Map(); // path -> code
+            for (const f of files) {
+                const rewritten = rewriteToVfsSpecifiers(f.fileContent, f.filePath, fileSet);
+                const out = transpile(rewritten, f.filePath);
+                transpiled.set(f.filePath, out);
+            }
+
+            // Create blob URLs for each file
+            for (const [path, code] of transpiled.entries()) {
+                const blob = new Blob([code], { type: 'application/javascript' });
+                const url = URL.createObjectURL(blob);
+                current.blobUrls.set(path, url);
+            }
+
+            // Build import map
+            const external = collectExternalImports(files);
+            // Always ensure react and react-dom/client available
+            external.add('react');
+            external.add('react-dom/client');
+
+            // Map VFS specifiers
+            const imports = {};
+            for (const [path, url] of current.blobUrls.entries()) {
+                imports['vfs:/' + path] = url;
+            }
+
+            // Map external deps via esm.sh
+            const esm = (spec) => {
+                if (spec === 'react') return 'https://esm.sh/react@18?dev';
+                if (spec === 'react-dom') return 'https://esm.sh/react-dom@18?dev';
+                if (spec === 'react-dom/client') return 'https://esm.sh/react-dom@18/client?dev';
+                // styled-components sometimes needs externals specified
+                if (spec === 'styled-components') return 'https://esm.sh/styled-components@6?external=react,react-dom&dev';
+                // everything else
+                return 'https://esm.sh/' + encodeURIComponent(spec) + '?external=react,react-dom&dev';
+            };
+
+            for (const spec of external) {
+                imports[spec] = esm(spec);
+            }
+
+            // Insert import map
+            const im = document.createElement('script');
+            im.type = 'importmap';
+            im.textContent = JSON.stringify({ imports }, null, 2);
+            document.head.appendChild(im);
+            current.importMapEl = im;
+
+            // Create bootstrap module
+            const hasMock = fileSet.has('mock.js') || fileSet.has('mock.jsx') || 
+                           fileSet.has('mock.ts') || fileSet.has('mock.tsx');
+            const mockPath = ['mock.js', 'mock.jsx', 'mock.ts', 'mock.tsx'].find(p => fileSet.has(p));
+
+            const bootstrap = `
+                import React from 'react';
+                import { createRoot } from 'react-dom/client';
+
+                // Prepare mount root
+                const rootEl = document.getElementById('root');
+
+                // Fallback if missing
+                if (!rootEl) throw new Error('Root element #root not found');
+
+                // Optional Zendesk mock if present (side-effects)
+                ${hasMock ? `await import('vfs:/${mockPath}');` : ''}
+
+                // Load the app entry
+                const mod = await import('vfs:/${entry}');
+                const App = mod?.default ?? mod?.App ?? null;
+
+                // Expose React root for unmounting
+                const root = createRoot(rootEl);
+                window.__APP_REACT_ROOT__ = root;
+
+                if (App) {
+                    root.render(React.createElement(App));
+                } else {
+                    console.warn('No default export detected in ${entry}. Assuming the module self-mounts.');
+                }
+            `;
+
+            const bootBlob = new Blob([bootstrap], { type: 'application/javascript' });
+            const bootUrl = URL.createObjectURL(bootBlob);
+            current.bootstrapUrl = bootUrl;
+
+            // Create module script to start
+            const script = document.createElement('script');
+            script.type = 'module';
+            script.src = bootUrl;
+            script.onerror = (e) => {
+                showError('Failed to load bootstrap module', e?.error || e);
+            };
+            document.body.appendChild(script);
+            current.moduleScript = script;
+
+            setStatus(`Mounted entry: ${entry}`);
+            log('Build complete. Entry:', entry);
+        }
+
+        // Handle incoming message
+        async function handleMessage(event) {
+            try {
+                log('Raw message data:', event.data);
+                const files = extractFiles(event.data);
+                if (!files.length) {
+                    setStatus('No files found in message. Expecting event.data.output = [{ args: { filePath, fileContent } }...]');
+                    return;
+                }
+                await buildAndMountApp(files);
+
+                // Link reactRoot for unmount
+                current.reactRoot = window.__APP_REACT_ROOT__ || null;
+            } catch (err) {
+                console.error(err);
+                setStatus('Build failed');
+                showError('Build or mount failed', err);
+            }
+        }
+
+        window.addEventListener('message', handleMessage);
+
+        // Helpful: if you want to test locally, uncomment to simulate a postMessage after 1s
+        /*
+        setTimeout(() => {
+            window.postMessage({
+                output: [
+                    {
+                        args: {
+                            filePath: 'index.jsx',
+                            fileContent: "import React from 'react'; export default function App(){ return React.createElement('div', null, 'Hello from dynamic app'); }",
+                            operation: 'add'
+                        }
+                    }
+                ]
+            }, '*');
+        }, 1000);
+        */
+    </script>
+</body>
+</html>
