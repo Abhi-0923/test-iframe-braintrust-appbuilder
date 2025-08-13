@@ -449,7 +449,7 @@
         async function handleMessage(event) {
             try {
                 log('Raw message data:', event.data);
-                const files = extractFiles(event.data);
+                const files = extractFiles(event.data.data);
                 if (!files.length) {
                     setStatus('No files found in message. Expecting event.data.output = [{ args: { filePath, fileContent } }...]');
                     return;
