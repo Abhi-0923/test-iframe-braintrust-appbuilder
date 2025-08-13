@@ -248,7 +248,7 @@
                 const filePath = args?.filePath;
                 const fileContent = args?.fileContent;
                 const operation = args?.operation;
-
+                if (!filePath.includes('.jsx')) continue;
                 if (!filePath || typeof fileContent !== 'string') continue;
                 if (operation && operation !== 'add' && operation !== 'update') continue;
 
