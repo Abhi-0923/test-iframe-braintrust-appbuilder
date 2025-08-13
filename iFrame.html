@@ -8,7 +8,10 @@
     <!-- Import map shim so we can inject import maps programmatically -->
     <script async src="https://unpkg.com/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
     
-    <!-- Babel standalone for JSX/TSX transpile in browser -->
+    <!-- esbuild-wasm for bundling -->
+    <script src="https://unpkg.com/esbuild-wasm@0.17.19/lib/browser.min.js"></script>
+    
+    <!-- Babel standalone for JSX/TSX transpile in browser (fallback) -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
     <style>
@@ -97,6 +100,417 @@
 
     <script type="module">
         // Basic environment/polyfills some libs expect
+
+
+        // HTML template as string parts - Using escaped quotes to avoid syntax errors
+const htmlStart = '<!DOCTYPE html><html lang=\"en\"><head>';
+const htmlMeta = '<meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, minimum-scale=1, maximum-scale=1\">';
+const htmlTitle = '<title>Zendesk App Builder</title>';
+// Split script tags to avoid HTML parsing issues in JavaScript strings
+const htmlSDK = '<script type=\"text/javascript\" src=\"https://static.zdassets.com/zendesk_app_framework_sdk/2.0/zaf_sdk.min.js\">' + '</' + 'script>';
+const htmlBody = '</head><body><div id=\"root\"></div>';
+const htmlScript = '<script type=\"module\">// Then run the bundled app code';
+const htmlEnd = '</' + 'script></body></html>';
+
+// Function to create the full HTML template
+function createHTMLTemplate(errorHandler, bedrockStyle, importMap, zafClient, appReactTemplate) {
+    return htmlStart + 
+           htmlMeta +
+           errorHandler + 
+           bedrockStyle + 
+           htmlTitle + 
+           importMap + 
+           htmlSDK + 
+           htmlBody + 
+           zafClient + 
+           htmlScript + 
+           appReactTemplate + 
+           htmlEnd;
+}
+
+// BEDROCK CSS style
+const BEDROCKSTYLE = 
+'<style>' +
+'html{--tw-bg-opacity:1;--tw-text-opacity:1;font-feature-settings:\"kern\",\"kern\";' +
+'background-color:#fff;box-sizing:border-box;overflow-y:auto!important;' +
+'color:#293239;font-family:system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,Arial,sans-serif;' +
+'font-kerning:normal;font-size:14px;line-height:20px;min-height:100%}' +
+'*,:after,:before{box-sizing:border-box}' +
+'html{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif,Apple Color Emoji,Segoe UI Emoji;' +
+'line-height:1.15;-webkit-text-size-adjust:100%;-moz-tab-size:4;-o-tab-size:4;tab-size:4}' +
+'body{margin:0}' +
+'</style>';
+
+// Error handler script
+const ERROR_HANDLER = 
+'<script>' +
+'window.onerror=function(message,source,lineno,colno,error){' +
+'console.log({error});' +
+'window.parent.postMessage({' +
+'type:\"iframe-error\",' +
+'error:error?.toString(),' +
+'stack:error?.stack,' +
+'message:message,' +
+'source:source,' +
+'lineno:lineno,' +
+'colno:colno' +
+'},\"*\");' +
+'return false;' +
+'};' +
+'window.addEventListener(\"unhandledrejection\",function(event){' +
+'window.parent.postMessage({' +
+'type:\"iframe-error\",' +
+'error:event.reason?.toString(),' +
+'stack:event.reason?.stack' +
+'},\"*\");' +
+'});' +
+'</' + 'script>';
+
+// ZAF mock client
+const ZAF_MOCK = 
+'window.zafClient={' +
+'get:(path)=>new Promise(r=>r("x")),' +
+'set:(path,value)=>new Promise(r=>r("x")),' +
+'request:(method,path,data)=>new Promise(r=>r("x")),' +
+'invoke:(method,data)=>new Promise(r=>r("x"))' +
+'}';
+
+// Create ZAF client initialization script
+function getZAFClientInitScript(mock, zafMockData) {
+    const initScript = 'window.zafClient=ZAFClient.init();';
+    const mockScript = mock ? (zafMockData || ZAF_MOCK) : '';
+    const resizeScript = mock ? '' : 'window?.zafClient?.invoke("resize",{width:"100%",height:"550px"});';
+    return '<script type="text/javascript">' + initScript + mockScript + resizeScript + '</' + 'script>';
+}
+        
+        // Initialize esbuild
+        let esbuildInitialized = false;
+        let esbuildInitPromise = null;
+        
+        async function initEsbuild() {
+            if (esbuildInitialized) return;
+            if (esbuildInitPromise) return esbuildInitPromise;
+            
+            esbuildInitPromise = new Promise(async (resolve, reject) => {
+                try {
+                    await esbuild.initialize({
+                        wasmURL: 'https://unpkg.com/esbuild-wasm@0.17.19/esbuild.wasm'
+                    });
+                    esbuildInitialized = true;
+                    log('esbuild initialized');
+                    resolve();
+                } catch (err) {
+                    log('esbuild init error:', err);
+                    reject(err);
+                }
+            });
+            
+            return esbuildInitPromise;
+        }
+        
+        // Attempt to initialize esbuild immediately
+        initEsbuild().catch(err => console.error('Failed to initialize esbuild:', err));
+
+        // Utility to parse import maps
+        function parseImportMaps() {
+            const imports = {};
+            
+            // Add React, ReactDOM and other common packages
+            imports['react'] = 'https://esm.sh/react@18?dev';
+            imports['react-dom'] = 'https://esm.sh/react-dom@18?dev';
+            imports['react-dom/client'] = 'https://esm.sh/react-dom@18/client?dev';
+            imports['styled-components'] = 'https://esm.sh/styled-components@6?external=react,react-dom&dev';
+            
+            // Add Zendesk Garden packages
+            const gardenPackages = ['react-buttons', 'react-loaders', 'react-notifications', 'react-typography'];
+            gardenPackages.forEach(pkg => {
+                imports['@zendeskgarden/' + pkg] = 'https://esm.sh/@zendeskgarden/' + pkg + '?external=react,react-dom&dev';
+            });
+            
+            return '<script type="importmap">' + JSON.stringify({ imports }) + '</' + 'script>';
+        }
+
+        const getAppIndexJsx = (indexJsx) => {
+            // Create a simple wrapper with error boundary
+            const errorBoundaryCode = [
+                'import { createRoot } from "react-dom/client";',
+                '',
+                indexJsx,
+                '',
+                'class ErrorBoundary extends React.Component {',
+                '  constructor(props) {',
+                '    super(props);',
+                '    this.state = { hasError: false, error: null, copied: false };',
+                '  }',
+                '',
+                '  static getDerivedStateFromError(error) {',
+                '    return { hasError: true, error: error };',
+                '  }',
+                '',
+                '  componentDidCatch(error, errorInfo) {',
+                '    window.parent.postMessage({',
+                '      type: "iframe-error",',
+                '      error: error.toString(),',
+                '      errorInfo: JSON.stringify(errorInfo)',
+                '    }, "*");',
+                '  }',
+                '',
+                '  copyErrorToClipboard = () => {',
+                '    const errorText = this.state.error?.toString() || "Unknown error";',
+                '    navigator.clipboard.writeText(errorText);',
+                '    this.setState({ copied: true });',
+                '    setTimeout(() => {',
+                '      this.setState({ copied: false });',
+                '    }, 2000);',
+                '  };',
+                '',
+                '  render() {',
+                '    if (this.state.hasError) {',
+                '      return (',
+                '        <div style="font-size:16px;display:grid;height:100vh;width:100vw;place-content:center;padding:20px;text-align:center">',
+                '          <div>',
+                '            <h4 style="margin-bottom:8px;color:#d93f4c">',
+                '              An error occurred in your application',
+                '            </h4>',
+                '            <p style="margin-bottom:16px;color:#49545c;max-width:500px">',
+                '              To resolve this issue, please copy the error message below and paste it back into the app builder.',
+                '              App Builder will automatically attempt to fix this issue.',
+                '            </p>',
+                '            <pre style="background:#f8f9f9;padding:16px;border-radius:4px;max-width:600px;overflow:auto;text-align:left;white-space:pre-wrap">',
+                '              {this.state.error?.toString()}',
+                '            </pre>',
+                '            <button',
+                '              onClick={this.copyErrorToClipboard}',
+                '              title="Click to copy error message"',
+                '              style="margin-top:16px;padding:8px 16px;border:1px solid #c1c3c5;border-radius:4px;background:white;cursor:pointer;transition:all 0.2s ease;display:inline-flex;align-items:center;gap:8px"',
+                '            >',
+                '              {this.state.copied ? (',
+                '                <>',
+                '                  <span style="color:#1f73b7">Copied!</span>',
+                '                  <span style="font-size:14px">✓</span>',
+                '                </>',
+                '              ) : (',
+                '                <>',
+                '                  Copy Error',
+                '                  <span style="font-size:14px">📋</span>',
+                '                </>',
+                '              )}',
+                '            </button>',
+                '          </div>',
+                '        </div>',
+                '      );',
+                '    }',
+                '    return this.props.children;',
+                '  }',
+                '}',
+                '',
+                'const AppWithErrorBoundary = () => (',
+                '  <ErrorBoundary>',
+                '    <App />',
+                '  </ErrorBoundary>',
+                ');',
+                '',
+                'try {',
+                '  createRoot(document.getElementById("root")).render(<AppWithErrorBoundary />);',
+                '} catch (error) {',
+                '  console.log({error});',
+                '  window.parent.postMessage({',
+                '    type: "iframe-error",',
+                '    error: error.toString()',
+                '  }, "*");',
+                '}'
+            ];
+            return errorBoundaryCode.join('\n');
+        };
+
+        // Process app code and generate HTML
+        async function getAppIndexHtml(appCode) {
+            // Wait for esbuild to be initialized
+            await initEsbuild();
+            
+            // Create index.jsx with error boundary wrapper
+            const indexJSX = appCode['index.jsx'];
+            const appIndexJsx = getAppIndexJsx(indexJSX);
+            const transformedAppCodeFiles = {
+                ...appCode,
+                'index.jsx': appIndexJsx,
+            };
+            
+            // Create a virtual file system for esbuild
+            const virtualFileSystem = transformedAppCodeFiles;
+            
+            const entryPoint = 'index.jsx';
+            // Bundle with esbuild
+            const result = await esbuild.build({
+                entryPoints: [entryPoint],
+                bundle: true,
+                format: 'esm',
+                target: 'es2015',
+                write: false,
+                ignoreAnnotations: true,
+                outfile: 'out.js',
+                jsx: 'transform', 
+                jsxFactory: 'React.createElement',
+                jsxFragment: 'React.Fragment',
+                external: ['react', 'react-dom', 'react-dom/client', 'styled-components', '@zendeskgarden/*'],
+                legalComments: 'none',
+                charset: 'utf8',
+                sourcemap: 'inline',
+                plugins: [
+                    {
+                        name: 'virtual-file-system',
+                        setup(build) {
+                            // Resolve paths to our virtual file system
+                            build.onResolve({ filter: /.*/ }, (args) => {
+                                // Handle external dependencies
+                                if (
+                                    !args.path.startsWith('./') &&
+                                    !args.path.startsWith('../') &&
+                                    !args.path.startsWith('/') &&
+                                    args.kind !== 'entry-point'
+                                ) {
+                                    return { external: true };
+                                }
+                                
+                                let resolvedPath = args.path;
+                                
+                                // If it's a relative import, resolve it relative to the importer
+                                if (
+                                    args.importer &&
+                                    (args.path.startsWith('./') || args.path.startsWith('../'))
+                                ) {
+                                    // Get directory of the importing file
+                                    const importerDir = args.importer
+                                        .split('/')
+                                        .slice(0, -1)
+                                        .join('/');
+                                    
+                                    // Split the path into segments
+                                    const pathSegments = args.path.split('/');
+                                    const dirSegments = importerDir ? importerDir.split('/') : [];
+                                    
+                                    // Process each segment
+                                    for (const segment of pathSegments) {
+                                        if (segment === '.' || segment === '') {
+                                            // Skip current directory references
+                                            continue;
+                                        } else if (segment === '..') {
+                                            // Go up one directory
+                                            dirSegments.pop();
+                                        } else {
+                                            // Add the segment
+                                            dirSegments.push(segment);
+                                        }
+                                    }
+                                    
+                                    // Join back to create the resolved path
+                                    resolvedPath = dirSegments.join('/');
+                                } else {
+                                    // For absolute paths or entry points, just normalize
+                                    resolvedPath = args.path.replace(/^\.\/|^\//, '');
+                                }
+                                
+                                // Check if the file exists directly in the virtual file system
+                                if (virtualFileSystem[resolvedPath]) {
+                                    return { path: resolvedPath, namespace: 'vfs' };
+                                }
+                                
+                                // Try to find the file with extensions
+                                const extensions = ['.jsx', '.js'];
+                                for (const ext of extensions) {
+                                    const pathWithExt = resolvedPath + ext;
+                                    if (virtualFileSystem[pathWithExt]) {
+                                        return { path: pathWithExt, namespace: 'vfs' };
+                                    }
+                                }
+                                
+                                // Look for partial matches (like components/HelloWorld matching components/HelloWorld.jsx)
+                                const possibleMatches = Object.keys(virtualFileSystem).filter(
+                                    (key) =>
+                                        key.startsWith(resolvedPath + '.') || key === resolvedPath,
+                                );
+                                
+                                if (possibleMatches.length > 0) {
+                                    return { path: possibleMatches[0], namespace: 'vfs' };
+                                }
+                                
+                                // File not found in virtual filesystem, treat as external
+                                return { external: true };
+                            });
+                            
+                            // Load files from our virtual file system
+                            build.onLoad({ filter: /.*/, namespace: 'vfs' }, (args) => {
+                                const content = virtualFileSystem[args.path];
+                                if (!content) {
+                                    return {
+                                        errors: [{ text: 'Could not load file: ' + args.path }],
+                                    };
+                                }
+                                
+                                // Determine appropriate loader based on file extension
+                                const getLoader = () => {
+                                    // JSX files
+                                    if (args.path.endsWith('.jsx')) {
+                                        return 'jsx';
+                                    }
+                                    
+                                    if (args.path.endsWith('.css')) {
+                                        return 'css';
+                                    }
+                                    
+                                    // Files with no extension but contain React
+                                    if (!args.path.includes('.') && content.includes('React')) {
+                                        return 'jsx';
+                                    }
+                                    
+                                    // JS files that might contain JSX
+                                    if (
+                                        args.path.endsWith('.js') &&
+                                        content.includes('React') &&
+                                        (content.includes('<') || content.includes('/>'))
+                                    ) {
+                                        return 'jsx';
+                                    }
+                                    
+                                    // Default to js loader
+                                    return 'js';
+                                };
+                                
+                                return {
+                                    contents: content,
+                                    loader: getLoader(),
+                                };
+                            });
+                        },
+                    },
+                ],
+            });
+            
+            // Get the bundled code
+            const bundledCode = result.outputFiles?.[0]?.text;
+            const mockJS = appCode['mock.js'];
+            
+            if (!bundledCode) {
+                throw new Error('Failed to generate bundle');
+            }
+            
+            // Generate import map
+            const importMap = parseImportMaps();
+            
+            // Create ZAF client script
+            const zafClientScript = getZAFClientInitScript(true, mockJS);
+            
+            // Use the createHTMLTemplate function to generate the final HTML
+            return createHTMLTemplate(
+                ERROR_HANDLER,
+                BEDROCKSTYLE,
+                importMap,
+                zafClientScript,
+                bundledCode
+            );
+        }
+        
+        // Basic environment/polyfills some libs expect
         // React dev builds sometimes check process.env.NODE_ENV
         window.process = window.process || { 
             env: { 
@@ -150,10 +564,10 @@
         // Keep state for cleanup between runs
         let current = {
             blobUrls: new Map(), // path -> blobURL
-            moduleScript: null, // <script type="module" src="..."> for bootstrap
+            moduleScript: null, // script type module for bootstrap
             bootstrapUrl: null, // blob URL of bootstrap module
-            importMapEl: null, // <script type="importmap">
-            reactRoot: null, // React root instance (createRoot)
+            importMapEl: null, // script type importmap
+            reactRoot: null // React root instance (createRoot)
         };
 
         function revokeAllBlobs() {
@@ -305,7 +719,7 @@
 
         // Rewrite relative imports to VFS bare specifiers like vfs:/path/to/file.ext
         function rewriteToVfsSpecifiers(code, fromPath, fileSet) {
-            const rx = /((?:import|export)\s+(?:[^'"]*from\s+)?|import\s*\()\s*(['"])([^'"]+)\2/g;
+            const rx = new RegExp('((?:import|export)\\\\s+(?:[^\\\'\"]*from\\\\s+)?|import\\\\s*\\\\()\\\\s*([\\\'"])(.[^\\\'\"]*?)\\\\2', 'g');
             return code.replace(rx, (full, pre, quote, spec) => {
                 if (spec.startsWith('.')) {
                     let resolved = resolveRelative(spec, fromPath);
@@ -331,7 +745,7 @@
                 plugins: [],
                 sourceMaps: 'inline',
                 retainLines: true
-            }).code + `\n//# sourceURL=${filename}\n`;
+            }).code + '\\n//# sourceURL=' + filename + '\\n';
         }
 
         // Build and mount app from files
@@ -399,33 +813,40 @@
                            fileSet.has('mock.ts') || fileSet.has('mock.tsx');
             const mockPath = ['mock.js', 'mock.jsx', 'mock.ts', 'mock.tsx'].find(p => fileSet.has(p));
 
-            const bootstrap = `
-                import React from 'react';
-                import { createRoot } from 'react-dom/client';
-
-                // Prepare mount root
-                const rootEl = document.getElementById('root');
-
-                // Fallback if missing
-                if (!rootEl) throw new Error('Root element #root not found');
-
-                // Optional Zendesk mock if present (side-effects)
-                ${hasMock ? `await import('vfs:/${mockPath}');` : ''}
-
-                // Load the app entry
-                const mod = await import('vfs:/${entry}');
-                const App = mod?.default ?? mod?.App ?? null;
-
-                // Expose React root for unmounting
-                const root = createRoot(rootEl);
-                window.__APP_REACT_ROOT__ = root;
-
-                if (App) {
-                    root.render(React.createElement(App));
-                } else {
-                    console.warn('No default export detected in ${entry}. Assuming the module self-mounts.');
-                }
-            `;
+            // Build bootstrap module code using array parts
+            const bootstrapParts = [];
+            
+            bootstrapParts.push("import React from 'react';");
+            bootstrapParts.push("import { createRoot } from 'react-dom/client';");
+            bootstrapParts.push("");
+            bootstrapParts.push("// Prepare mount root");
+            bootstrapParts.push("const rootEl = document.getElementById('root');");
+            bootstrapParts.push("");
+            bootstrapParts.push("// Fallback if missing");
+            bootstrapParts.push("if (!rootEl) throw new Error('Root element #root not found');");
+            bootstrapParts.push("");
+            bootstrapParts.push("// Optional Zendesk mock if present (side-effects)");
+            
+            if (hasMock) {
+                bootstrapParts.push("await import('vfs:/" + mockPath + "');");
+            }
+            
+            bootstrapParts.push("");
+            bootstrapParts.push("// Load the app entry");
+            bootstrapParts.push("const mod = await import('vfs:/" + entry + "');");
+            bootstrapParts.push("const App = mod?.default ?? mod?.App ?? null;");
+            bootstrapParts.push("");
+            bootstrapParts.push("// Expose React root for unmounting");
+            bootstrapParts.push("const root = createRoot(rootEl);");
+            bootstrapParts.push("window.__APP_REACT_ROOT__ = root;");
+            bootstrapParts.push("");
+            bootstrapParts.push("if (App) {");
+            bootstrapParts.push("    root.render(React.createElement(App));");
+            bootstrapParts.push("} else {");
+            bootstrapParts.push("    console.warn('No default export detected in " + entry + ". Assuming the module self-mounts');");
+            bootstrapParts.push("}");
+            
+            const bootstrap = bootstrapParts.join('\n');
 
             const bootBlob = new Blob([bootstrap], { type: 'application/javascript' });
             const bootUrl = URL.createObjectURL(bootBlob);
@@ -441,23 +862,108 @@
             document.body.appendChild(script);
             current.moduleScript = script;
 
-            setStatus(`Mounted entry: ${entry}`);
+            setStatus('Mounted entry: ' + entry);
             log('Build complete. Entry:', entry);
         }
 
-        // Handle incoming message
+        // Handle incoming message using esbuild approach from Preview.tsx
         async function handleMessage(event) {
             try {
                 log('Raw message data:', event.data);
-                const files = extractFiles(event.data.data);
-                if (!files.length) {
+                clearError();
+                
+                // Extract files from the message
+                const filesData = extractFiles(event.data.data);
+                if (!filesData.length) {
                     setStatus('No files found in message. Expecting event.data.output = [{ args: { filePath, fileContent } }...]');
                     return;
                 }
-                await buildAndMountApp(files);
-
-                // Link reactRoot for unmount
-                current.reactRoot = window.__APP_REACT_ROOT__ || null;
+                
+                setStatus('Building app with esbuild...');
+                
+                // Format files into appCode format expected by getAppIndexHtml
+                const appCode = {};
+                let hasIndex = false;
+                
+                // Convert file array to appCode object format
+                for (const file of filesData) {
+                    appCode[file.filePath] = file.fileContent;
+                    if (file.filePath.includes('index.jsx')) {
+                        hasIndex = true;
+                    }
+                }
+                
+                // Ensure we have an index.jsx file
+                if (!hasIndex) {
+                    // If no index.jsx, create one by combining all JSX files
+                    let componentsImports = [];
+                    let firstComponent = null;
+                    
+                    for (const path in appCode) {
+                        if (path.endsWith('.jsx')) {
+                            const shortName = path.split('/').pop().split('.')[0];
+                            componentsImports.push('import ' + shortName + ' from \'./' + path + '\'');
+                            if (!firstComponent) firstComponent = shortName;
+                        }
+                    }
+                    
+                    if (firstComponent) {
+                        // Create a basic App component that renders the first component
+                        const indexContent = 
+                            componentsImports.join('\n') + 
+                            '\nimport React from \'react\';\n\n' + 
+                            'export default function App() {\n' + 
+                            '  return React.createElement(' + firstComponent + ', null);\n' + 
+                            '}';
+                        
+                        appCode['index.jsx'] = indexContent;
+                    } else {
+                        throw new Error('No JSX components found in the files');
+                    }
+                }
+                
+                // Use the transformCode logic from Preview.tsx
+                try {
+                    // Generate the HTML with bundled code
+                    const html = await getAppIndexHtml(appCode);
+                    
+                    // Clean up previous app
+                    unmountCurrentApp();
+                    
+                    // Create an iframe to render the app
+                    const iframe = document.createElement('iframe');
+                    iframe.style.width = '100%';
+                    iframe.style.height = '100%';
+                    iframe.style.border = 'none';
+                    iframe.sandbox = 'allow-scripts allow-same-origin allow-forms';
+                    
+                    // Replace the mount content with our iframe
+                    const mountEl = document.getElementById('mount');
+                    mountEl.innerHTML = '';
+                    mountEl.appendChild(iframe);
+                    
+                    // Set the iframe content
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    iframeDoc.open();
+                    iframeDoc.write(html);
+                    iframeDoc.close();
+                    
+                    // Store reference to react root
+                    setTimeout(() => {
+                        try {
+                            current.reactRoot = iframe.contentWindow.__APP_REACT_ROOT__ || null;
+                        } catch (e) {
+                            // Ignore errors getting root
+                        }
+                    }, 500);
+                    
+                    setStatus('App mounted successfully');
+                } catch (err) {
+                    console.error('Error in transformCode:', err);
+                    setStatus('Build failed');
+                    showError('ESBuild transformation failed', err);
+                }
+                
             } catch (err) {
                 console.error(err);
                 setStatus('Build failed');
@@ -468,21 +974,25 @@
         window.addEventListener('message', handleMessage);
 
         // Helpful: if you want to test locally, uncomment to simulate a postMessage after 1s
-        /*
+        
         setTimeout(() => {
             window.postMessage({
-                output: [
-                    {
-                        args: {
-                            filePath: 'index.jsx',
-                            fileContent: "import React from 'react'; export default function App(){ return React.createElement('div', null, 'Hello from dynamic app'); }",
-                            operation: 'add'
+                data: {
+                    output: [
+                        {
+                            args: {
+                                filePath: 'index.jsx',
+                                fileContent: "import React from 'react'; export default function App(){ return React.createElement('div', null, 'Hello from dynamic app using esbuild!'); }",
+                                operation: 'add'
+                            }
                         }
-                    }
-                ]
+                    ]
+                }
             }, '*');
         }, 1000);
-        */
+        
+    // Close out all potential template literals
+    var closeAll = '';
     </script>
 </body>
 </html>
