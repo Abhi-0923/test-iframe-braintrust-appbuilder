@@ -222,7 +222,22 @@ function getZAFClientInitScript(mock, zafMockData) {
             imports['styled-components'] = 'https://esm.sh/styled-components@6?external=react,react-dom&dev';
             
             // Add Zendesk Garden packages
-            const gardenPackages = ['react-buttons', 'react-loaders', 'react-notifications', 'react-typography', 'react-theming'];
+            const gardenPackages = [
+                'react-theming',
+                'react-grid',
+                'react-forms',
+                'react-buttons',
+                'react-tabs',
+                'react-accordions',
+                'react-tags',
+                'react-pagination',
+                'react-tables',
+                'react-loaders',
+                'react-notifications',
+                'react-modals',
+                'react-tooltips',
+                'react-typography'
+            ];
             gardenPackages.forEach(pkg => {
                 imports['@zendeskgarden/' + pkg] = 'https://esm.sh/@zendeskgarden/' + pkg + '?external=react,react-dom&dev';
             });
@@ -357,11 +372,20 @@ function getZAFClientInitScript(mock, zafMockData) {
                     'react-dom', 
                     'react-dom/client', 
                     'styled-components', 
+                    '@zendeskgarden/react-theming',
+                    '@zendeskgarden/react-grid',
+                    '@zendeskgarden/react-forms',
                     '@zendeskgarden/react-buttons',
+                    '@zendeskgarden/react-tabs',
+                    '@zendeskgarden/react-accordions',
+                    '@zendeskgarden/react-tags',
+                    '@zendeskgarden/react-pagination',
+                    '@zendeskgarden/react-tables',
                     '@zendeskgarden/react-loaders',
                     '@zendeskgarden/react-notifications',
-                    '@zendeskgarden/react-typography',
-                    '@zendeskgarden/react-theming'
+                    '@zendeskgarden/react-modals',
+                    '@zendeskgarden/react-tooltips',
+                    '@zendeskgarden/react-typography'
                 ],
                 legalComments: 'none',
                 charset: 'utf8',
@@ -792,11 +816,24 @@ function getZAFClientInitScript(mock, zafMockData) {
             external.add('react-dom');
             external.add('react-dom/client');
             external.add('styled-components');
-            external.add('@zendeskgarden/react-buttons');
-            external.add('@zendeskgarden/react-loaders');
-            external.add('@zendeskgarden/react-notifications');
-            external.add('@zendeskgarden/react-typography');
-            external.add('@zendeskgarden/react-theming');
+            
+            // Add Zendesk Garden packages
+            [
+                '@zendeskgarden/react-theming',
+                '@zendeskgarden/react-grid',
+                '@zendeskgarden/react-forms',
+                '@zendeskgarden/react-buttons',
+                '@zendeskgarden/react-tabs',
+                '@zendeskgarden/react-accordions',
+                '@zendeskgarden/react-tags',
+                '@zendeskgarden/react-pagination',
+                '@zendeskgarden/react-tables',
+                '@zendeskgarden/react-loaders',
+                '@zendeskgarden/react-notifications',
+                '@zendeskgarden/react-modals',
+                '@zendeskgarden/react-tooltips',
+                '@zendeskgarden/react-typography'
+            ].forEach(pkg => external.add(pkg));
 
             // Map VFS specifiers
             const imports = {};
@@ -1003,19 +1040,182 @@ function getZAFClientInitScript(mock, zafMockData) {
                             args: {
                                 filePath: 'index.jsx',
                                 fileContent: `
-import React from 'react';
+import React, { useState } from 'react';
 import { ThemeProvider } from '@zendeskgarden/react-theming';
 import { Button } from '@zendeskgarden/react-buttons';
+import { Tabs, TabList, Tab, TabPanel } from '@zendeskgarden/react-tabs';
+import { Grid, Row, Col } from '@zendeskgarden/react-grid';
+import { Field, Label, Input, Textarea } from '@zendeskgarden/react-forms';
+import { Tag } from '@zendeskgarden/react-tags';
+import { Notification, Title, Close } from '@zendeskgarden/react-notifications';
+import { Dots } from '@zendeskgarden/react-loaders';
+import { Tooltip } from '@zendeskgarden/react-tooltips';
+import { Modal, Header, Body, Footer, FooterItem } from '@zendeskgarden/react-modals';
+import { MD } from '@zendeskgarden/react-typography';
+import { Accordion, AccordionItem, AccordionLabel, AccordionPanel } from '@zendeskgarden/react-accordions';
+import { Pagination } from '@zendeskgarden/react-pagination';
+import { Table, Head, HeaderRow, HeaderCell, Body as TableBody, Row as TableRow, Cell } from '@zendeskgarden/react-tables';
 
 export default function App() {
+  const [selectedTab, setSelectedTab] = useState(0);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showNotification, setShowNotification] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [expandedItems, setExpandedItems] = useState(['item-1']);
+  
+  // Sample data for the table
+  const data = [
+    { id: 1, name: 'Product A', category: 'Electronics', price: '$199.99' },
+    { id: 2, name: 'Product B', category: 'Clothing', price: '$49.99' },
+    { id: 3, name: 'Product C', category: 'Home', price: '$129.99' },
+  ];
+  
+  const simulateLoading = () => {
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+      setShowNotification(true);
+    }, 1500);
+  };
+
   return (
     <ThemeProvider>
       <div style={{padding: '20px', fontFamily: 'system-ui, sans-serif'}}>
-        <h1>Hello from dynamic app using esbuild!</h1>
-        <p>This example uses Zendesk Garden components</p>
-        <Button onClick={() => alert('Button clicked!')}>
-          Click Me
-        </Button>
+        <h1>Garden Components Demo</h1>
+        
+        <Grid>
+          <Row>
+            <Col size={12}>
+              <Tabs selectedItem={selectedTab} onChange={setSelectedTab}>
+                <TabList>
+                  <Tab item={0}>Form</Tab>
+                  <Tab item={1}>Tags</Tab>
+                  <Tab item={2}>Actions</Tab>
+                  <Tab item={3}>Tables</Tab>
+                  <Tab item={4}>Accordions</Tab>
+                </TabList>
+                <TabPanel item={0} style={{padding: '20px 0'}}>
+                  <Field>
+                    <Label>Name</Label>
+                    <Input placeholder="Enter your name" />
+                  </Field>
+                  <Field style={{marginTop: '16px'}}>
+                    <Label>Description</Label>
+                    <Textarea placeholder="Enter a description" />
+                  </Field>
+                </TabPanel>
+                <TabPanel item={1} style={{padding: '20px 0'}}>
+                  <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
+                    <Tag>Default Tag</Tag>
+                    <Tag hue="green">Success</Tag>
+                    <Tag hue="blue">Info</Tag>
+                    <Tag hue="yellow">Warning</Tag>
+                    <Tag hue="red">Error</Tag>
+                  </div>
+                </TabPanel>
+                <TabPanel item={2} style={{padding: '20px 0'}}>
+                  <div style={{display: 'flex', gap: '12px'}}>
+                    <Tooltip content="Opens a modal dialog">
+                      <Button onClick={() => setIsModalOpen(true)}>
+                        Open Modal
+                      </Button>
+                    </Tooltip>
+                    
+                    <Button isPrimary onClick={simulateLoading} disabled={isLoading}>
+                      {isLoading ? <Dots size="20" /> : 'Save Changes'}
+                    </Button>
+                  </div>
+                </TabPanel>
+                <TabPanel item={3} style={{padding: '20px 0'}}>
+                  <Table style={{marginBottom: '16px'}}>
+                    <Head>
+                      <HeaderRow>
+                        <HeaderCell>ID</HeaderCell>
+                        <HeaderCell>Name</HeaderCell>
+                        <HeaderCell>Category</HeaderCell>
+                        <HeaderCell>Price</HeaderCell>
+                      </HeaderRow>
+                    </Head>
+                    <TableBody>
+                      {data.map(item => (
+                        <TableRow key={item.id}>
+                          <Cell>{item.id}</Cell>
+                          <Cell>{item.name}</Cell>
+                          <Cell>{item.category}</Cell>
+                          <Cell>{item.price}</Cell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  <div style={{display: 'flex', justifyContent: 'center'}}>
+                    <Pagination
+                      totalPages={5}
+                      currentPage={currentPage}
+                      onChange={setCurrentPage}
+                    />
+                  </div>
+                </TabPanel>
+                <TabPanel item={4} style={{padding: '20px 0'}}>
+                  <Accordion
+                    level={3}
+                    expandedSections={expandedItems}
+                    onChange={(expandedSections) => setExpandedItems(expandedSections)}
+                  >
+                    <AccordionItem id="item-1">
+                      <AccordionLabel>Section 1</AccordionLabel>
+                      <AccordionPanel>
+                        <p>This is the content for section 1.</p>
+                      </AccordionPanel>
+                    </AccordionItem>
+                    <AccordionItem id="item-2">
+                      <AccordionLabel>Section 2</AccordionLabel>
+                      <AccordionPanel>
+                        <p>This is the content for section 2.</p>
+                      </AccordionPanel>
+                    </AccordionItem>
+                    <AccordionItem id="item-3">
+                      <AccordionLabel>Section 3</AccordionLabel>
+                      <AccordionPanel>
+                        <p>This is the content for section 3.</p>
+                      </AccordionPanel>
+                    </AccordionItem>
+                  </Accordion>
+                </TabPanel>
+              </Tabs>
+            </Col>
+          </Row>
+        </Grid>
+        
+        {showNotification && (
+          <Notification type="success" style={{marginTop: '20px'}}>
+            <Title>Success!</Title>
+            <MD>Your changes have been saved.</MD>
+            <Close onClick={() => setShowNotification(false)} />
+          </Notification>
+        )}
+        
+        {isModalOpen && (
+          <Modal onClose={() => setIsModalOpen(false)}>
+            <Header>Confirmation</Header>
+            <Body>Are you sure you want to proceed with this action?</Body>
+            <Footer>
+              <FooterItem>
+                <Button isBasic onClick={() => setIsModalOpen(false)}>
+                  Cancel
+                </Button>
+              </FooterItem>
+              <FooterItem>
+                <Button isPrimary onClick={() => {
+                  setIsModalOpen(false);
+                  simulateLoading();
+                }}>
+                  Confirm
+                </Button>
+              </FooterItem>
+            </Footer>
+          </Modal>
+        )}
       </div>
     </ThemeProvider>
   );
