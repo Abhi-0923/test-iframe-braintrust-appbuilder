@@ -222,7 +222,7 @@ function getZAFClientInitScript(mock, zafMockData) {
             imports['styled-components'] = 'https://esm.sh/styled-components@6?external=react,react-dom&dev';
             
             // Add Zendesk Garden packages
-            const gardenPackages = ['react-buttons', 'react-loaders', 'react-notifications', 'react-typography'];
+            const gardenPackages = ['react-buttons', 'react-loaders', 'react-notifications', 'react-typography', 'react-theming'];
             gardenPackages.forEach(pkg => {
                 imports['@zendeskgarden/' + pkg] = 'https://esm.sh/@zendeskgarden/' + pkg + '?external=react,react-dom&dev';
             });
@@ -352,7 +352,17 @@ function getZAFClientInitScript(mock, zafMockData) {
                 jsx: 'transform', 
                 jsxFactory: 'React.createElement',
                 jsxFragment: 'React.Fragment',
-                external: ['react', 'react-dom', 'react-dom/client', 'styled-components', '@zendeskgarden/*'],
+                external: [
+                    'react', 
+                    'react-dom', 
+                    'react-dom/client', 
+                    'styled-components', 
+                    '@zendeskgarden/react-buttons',
+                    '@zendeskgarden/react-loaders',
+                    '@zendeskgarden/react-notifications',
+                    '@zendeskgarden/react-typography',
+                    '@zendeskgarden/react-theming'
+                ],
                 legalComments: 'none',
                 charset: 'utf8',
                 sourcemap: 'inline',
@@ -651,6 +661,7 @@ function getZAFClientInitScript(mock, zafMockData) {
         // Extract array of {filePath, fileContent} from message
         function extractFiles(payload) {
             // Accept either {output: [...] } or [...] directly
+            console.log('extractFiles payload:', payload);
             const arr = Array.isArray(payload?.output) ? payload.output : 
                        (Array.isArray(payload) ? payload : null);
             if (!Array.isArray(arr)) return [];
@@ -776,9 +787,16 @@ function getZAFClientInitScript(mock, zafMockData) {
 
             // Build import map
             const external = collectExternalImports(files);
-            // Always ensure react and react-dom/client available
+            // Always ensure react and garden packages available
             external.add('react');
+            external.add('react-dom');
             external.add('react-dom/client');
+            external.add('styled-components');
+            external.add('@zendeskgarden/react-buttons');
+            external.add('@zendeskgarden/react-loaders');
+            external.add('@zendeskgarden/react-notifications');
+            external.add('@zendeskgarden/react-typography');
+            external.add('@zendeskgarden/react-theming');
 
             // Map VFS specifiers
             const imports = {};
@@ -793,6 +811,8 @@ function getZAFClientInitScript(mock, zafMockData) {
                 if (spec === 'react-dom/client') return 'https://esm.sh/react-dom@18/client?dev';
                 // styled-components sometimes needs externals specified
                 if (spec === 'styled-components') return 'https://esm.sh/styled-components@6?external=react,react-dom&dev';
+                // Zendesk Garden packages
+                if (spec.startsWith('@zendeskgarden/')) return 'https://esm.sh/' + encodeURIComponent(spec) + '?external=react,react-dom&dev';
                 // everything else
                 return 'https://esm.sh/' + encodeURIComponent(spec) + '?external=react,react-dom&dev';
             };
@@ -982,7 +1002,24 @@ function getZAFClientInitScript(mock, zafMockData) {
                         {
                             args: {
                                 filePath: 'index.jsx',
-                                fileContent: "import React from 'react'; export default function App(){ return React.createElement('div', null, 'Hello from dynamic app using esbuild!'); }",
+                                fileContent: `
+import React from 'react';
+import { ThemeProvider } from '@zendeskgarden/react-theming';
+import { Button } from '@zendeskgarden/react-buttons';
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <div style={{padding: '20px', fontFamily: 'system-ui, sans-serif'}}>
+        <h1>Hello from dynamic app using esbuild!</h1>
+        <p>This example uses Zendesk Garden components</p>
+        <Button onClick={() => alert('Button clicked!')}>
+          Click Me
+        </Button>
+      </div>
+    </ThemeProvider>
+  );
+}`,
                                 operation: 'add'
                             }
                         }
