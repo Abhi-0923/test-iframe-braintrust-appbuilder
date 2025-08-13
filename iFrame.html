@@ -1,32 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8" />
     <title>Dynamic React App Runner</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    
+
     <!-- Import map shim so we can inject import maps programmatically -->
     <script async src="https://unpkg.com/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
-    
+
     <!-- esbuild-wasm for bundling -->
     <script src="https://unpkg.com/esbuild-wasm@0.17.19/lib/browser.min.js"></script>
-    
+
     <!-- Babel standalone for JSX/TSX transpile in browser (fallback) -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
+
     <style>
         body {
             margin: 0;
             font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji";
             background: #fafafa;
         }
-        
+
         #app {
             min-height: 100vh;
             display: flex;
             flex-direction: column;
         }
-        
+
         #toolbar {
             background: #111827;
             color: #e5e7eb;
@@ -36,14 +37,14 @@
             align-items: center;
             gap: 10px;
         }
-        
+
         #status {
             flex: 1;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        
+
         button {
             background: #374151;
             color: #e5e7eb;
@@ -53,17 +54,17 @@
             cursor: pointer;
             font-size: 12px;
         }
-        
+
         button:hover {
             background: #4b5563;
         }
-        
+
         #mount {
             flex: 1;
             display: block;
             padding: 16px;
         }
-        
+
         #error {
             color: #b91c1c;
             white-space: pre-wrap;
@@ -75,7 +76,7 @@
             border-radius: 6px;
             margin: 12px;
         }
-        
+
         #log {
             font-size: 12px;
             color: #6b7280;
@@ -84,6 +85,7 @@
         }
     </style>
 </head>
+
 <body>
     <div id="app">
         <div id="toolbar">
@@ -103,94 +105,94 @@
 
 
         // HTML template as string parts - Using escaped quotes to avoid syntax errors
-const htmlStart = '<!DOCTYPE html><html lang=\"en\"><head>';
-const htmlMeta = '<meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, minimum-scale=1, maximum-scale=1\">';
-const htmlTitle = '<title>Zendesk App Builder</title>';
-// Split script tags to avoid HTML parsing issues in JavaScript strings
-const htmlSDK = '<script type=\"text/javascript\" src=\"https://static.zdassets.com/zendesk_app_framework_sdk/2.0/zaf_sdk.min.js\">' + '</' + 'script>';
-const htmlBody = '</head><body><div id=\"root\"></div>';
-const htmlScript = '<script type=\"module\">// Then run the bundled app code';
-const htmlEnd = '</' + 'script></body></html>';
+        const htmlStart = '<!DOCTYPE html><html lang=\"en\"><head>';
+        const htmlMeta = '<meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, minimum-scale=1, maximum-scale=1\">';
+        const htmlTitle = '<title>Zendesk App Builder</title>';
+        // Split script tags to avoid HTML parsing issues in JavaScript strings
+        const htmlSDK = '<script type=\"text/javascript\" src=\"https://static.zdassets.com/zendesk_app_framework_sdk/2.0/zaf_sdk.min.js\">' + '</' + 'script>';
+        const htmlBody = '</head><body><div id=\"root\"></div>';
+        const htmlScript = '<script type=\"module\">// Then run the bundled app code';
+        const htmlEnd = '</' + 'script></body></html>';
 
-// Function to create the full HTML template
-function createHTMLTemplate(errorHandler, bedrockStyle, importMap, zafClient, appReactTemplate) {
-    return htmlStart + 
-           htmlMeta +
-           errorHandler + 
-           bedrockStyle + 
-           htmlTitle + 
-           importMap + 
-           htmlSDK + 
-           htmlBody + 
-           zafClient + 
-           htmlScript + 
-           appReactTemplate + 
-           htmlEnd;
-}
+        // Function to create the full HTML template
+        function createHTMLTemplate(errorHandler, bedrockStyle, importMap, zafClient, appReactTemplate) {
+            return htmlStart +
+                htmlMeta +
+                errorHandler +
+                bedrockStyle +
+                htmlTitle +
+                importMap +
+                htmlSDK +
+                htmlBody +
+                zafClient +
+                htmlScript +
+                appReactTemplate +
+                htmlEnd;
+        }
 
-// BEDROCK CSS style
-const BEDROCKSTYLE = 
-'<style>' +
-'html{--tw-bg-opacity:1;--tw-text-opacity:1;font-feature-settings:\"kern\",\"kern\";' +
-'background-color:#fff;box-sizing:border-box;overflow-y:auto!important;' +
-'color:#293239;font-family:system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,Arial,sans-serif;' +
-'font-kerning:normal;font-size:14px;line-height:20px;min-height:100%}' +
-'*,:after,:before{box-sizing:border-box}' +
-'html{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif,Apple Color Emoji,Segoe UI Emoji;' +
-'line-height:1.15;-webkit-text-size-adjust:100%;-moz-tab-size:4;-o-tab-size:4;tab-size:4}' +
-'body{margin:0}' +
-'</style>';
+        // BEDROCK CSS style
+        const BEDROCKSTYLE =
+            '<style>' +
+            'html{--tw-bg-opacity:1;--tw-text-opacity:1;font-feature-settings:\"kern\",\"kern\";' +
+            'background-color:#fff;box-sizing:border-box;overflow-y:auto!important;' +
+            'color:#293239;font-family:system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,Arial,sans-serif;' +
+            'font-kerning:normal;font-size:14px;line-height:20px;min-height:100%}' +
+            '*,:after,:before{box-sizing:border-box}' +
+            'html{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif,Apple Color Emoji,Segoe UI Emoji;' +
+            'line-height:1.15;-webkit-text-size-adjust:100%;-moz-tab-size:4;-o-tab-size:4;tab-size:4}' +
+            'body{margin:0}' +
+            '</style>';
 
-// Error handler script
-const ERROR_HANDLER = 
-'<script>' +
-'window.onerror=function(message,source,lineno,colno,error){' +
-'console.log({error});' +
-'window.parent.postMessage({' +
-'type:\"iframe-error\",' +
-'error:error?.toString(),' +
-'stack:error?.stack,' +
-'message:message,' +
-'source:source,' +
-'lineno:lineno,' +
-'colno:colno' +
-'},\"*\");' +
-'return false;' +
-'};' +
-'window.addEventListener(\"unhandledrejection\",function(event){' +
-'window.parent.postMessage({' +
-'type:\"iframe-error\",' +
-'error:event.reason?.toString(),' +
-'stack:event.reason?.stack' +
-'},\"*\");' +
-'});' +
-'</' + 'script>';
+        // Error handler script
+        const ERROR_HANDLER =
+            '<script>' +
+            'window.onerror=function(message,source,lineno,colno,error){' +
+            'console.log({error});' +
+            'window.parent.postMessage({' +
+            'type:\"iframe-error\",' +
+            'error:error?.toString(),' +
+            'stack:error?.stack,' +
+            'message:message,' +
+            'source:source,' +
+            'lineno:lineno,' +
+            'colno:colno' +
+            '},\"*\");' +
+            'return false;' +
+            '};' +
+            'window.addEventListener(\"unhandledrejection\",function(event){' +
+            'window.parent.postMessage({' +
+            'type:\"iframe-error\",' +
+            'error:event.reason?.toString(),' +
+            'stack:event.reason?.stack' +
+            '},\"*\");' +
+            '});' +
+            '</' + 'script>';
 
-// ZAF mock client
-const ZAF_MOCK = 
-'window.zafClient={' +
-'get:(path)=>new Promise(r=>r("x")),' +
-'set:(path,value)=>new Promise(r=>r("x")),' +
-'request:(method,path,data)=>new Promise(r=>r("x")),' +
-'invoke:(method,data)=>new Promise(r=>r("x"))' +
-'}';
+        // ZAF mock client
+        const ZAF_MOCK =
+            'window.zafClient={' +
+            'get:(path)=>new Promise(r=>r("x")),' +
+            'set:(path,value)=>new Promise(r=>r("x")),' +
+            'request:(method,path,data)=>new Promise(r=>r("x")),' +
+            'invoke:(method,data)=>new Promise(r=>r("x"))' +
+            '}';
 
-// Create ZAF client initialization script
-function getZAFClientInitScript(mock, zafMockData) {
-    const initScript = 'window.zafClient=ZAFClient.init();';
-    const mockScript = mock ? (zafMockData || ZAF_MOCK) : '';
-    const resizeScript = mock ? '' : 'window?.zafClient?.invoke("resize",{width:"100%",height:"550px"});';
-    return '<script type="text/javascript">' + initScript + mockScript + resizeScript + '</' + 'script>';
-}
-        
+        // Create ZAF client initialization script
+        function getZAFClientInitScript(mock, zafMockData) {
+            const initScript = 'window.zafClient=ZAFClient.init();';
+            const mockScript = mock ? (zafMockData || ZAF_MOCK) : '';
+            const resizeScript = mock ? '' : 'window?.zafClient?.invoke("resize",{width:"100%",height:"550px"});';
+            return '<script type="text/javascript">' + initScript + mockScript + resizeScript + '</' + 'script>';
+        }
+
         // Initialize esbuild
         let esbuildInitialized = false;
         let esbuildInitPromise = null;
-        
+
         async function initEsbuild() {
             if (esbuildInitialized) return;
             if (esbuildInitPromise) return esbuildInitPromise;
-            
+
             esbuildInitPromise = new Promise(async (resolve, reject) => {
                 try {
                     await esbuild.initialize({
@@ -204,23 +206,23 @@ function getZAFClientInitScript(mock, zafMockData) {
                     reject(err);
                 }
             });
-            
+
             return esbuildInitPromise;
         }
-        
+
         // Attempt to initialize esbuild immediately
         initEsbuild().catch(err => console.error('Failed to initialize esbuild:', err));
 
         // Utility to parse import maps
         function parseImportMaps() {
             const imports = {};
-            
+
             // Add React, ReactDOM and other common packages
             imports['react'] = 'https://esm.sh/react@18?dev';
             imports['react-dom'] = 'https://esm.sh/react-dom@18?dev';
             imports['react-dom/client'] = 'https://esm.sh/react-dom@18/client?dev';
             imports['styled-components'] = 'https://esm.sh/styled-components@6?external=react,react-dom&dev';
-            
+
             // Add Zendesk Garden packages
             const gardenPackages = [
                 'react-theming',
@@ -241,7 +243,7 @@ function getZAFClientInitScript(mock, zafMockData) {
             gardenPackages.forEach(pkg => {
                 imports['@zendeskgarden/' + pkg] = 'https://esm.sh/@zendeskgarden/' + pkg + '?external=react,react-dom&dev';
             });
-            
+
             return '<script type="importmap">' + JSON.stringify({ imports }) + '</' + 'script>';
         }
 
@@ -342,7 +344,7 @@ function getZAFClientInitScript(mock, zafMockData) {
         async function getAppIndexHtml(appCode) {
             // Wait for esbuild to be initialized
             await initEsbuild();
-            
+
             // Create index.jsx with error boundary wrapper
             const indexJSX = appCode['index.jsx'];
             const appIndexJsx = getAppIndexJsx(indexJSX);
@@ -350,10 +352,10 @@ function getZAFClientInitScript(mock, zafMockData) {
                 ...appCode,
                 'index.jsx': appIndexJsx,
             };
-            
+
             // Create a virtual file system for esbuild
             const virtualFileSystem = transformedAppCodeFiles;
-            
+
             const entryPoint = 'index.jsx';
             // Bundle with esbuild
             const result = await esbuild.build({
@@ -364,14 +366,14 @@ function getZAFClientInitScript(mock, zafMockData) {
                 write: false,
                 ignoreAnnotations: true,
                 outfile: 'out.js',
-                jsx: 'transform', 
+                jsx: 'transform',
                 jsxFactory: 'React.createElement',
                 jsxFragment: 'React.Fragment',
                 external: [
-                    'react', 
-                    'react-dom', 
-                    'react-dom/client', 
-                    'styled-components', 
+                    'react',
+                    'react-dom',
+                    'react-dom/client',
+                    'styled-components',
                     '@zendeskgarden/react-theming',
                     '@zendeskgarden/react-grid',
                     '@zendeskgarden/react-forms',
@@ -405,9 +407,9 @@ function getZAFClientInitScript(mock, zafMockData) {
                                 ) {
                                     return { external: true };
                                 }
-                                
+
                                 let resolvedPath = args.path;
-                                
+
                                 // If it's a relative import, resolve it relative to the importer
                                 if (
                                     args.importer &&
@@ -418,11 +420,11 @@ function getZAFClientInitScript(mock, zafMockData) {
                                         .split('/')
                                         .slice(0, -1)
                                         .join('/');
-                                    
+
                                     // Split the path into segments
                                     const pathSegments = args.path.split('/');
                                     const dirSegments = importerDir ? importerDir.split('/') : [];
-                                    
+
                                     // Process each segment
                                     for (const segment of pathSegments) {
                                         if (segment === '.' || segment === '') {
@@ -436,19 +438,19 @@ function getZAFClientInitScript(mock, zafMockData) {
                                             dirSegments.push(segment);
                                         }
                                     }
-                                    
+
                                     // Join back to create the resolved path
                                     resolvedPath = dirSegments.join('/');
                                 } else {
                                     // For absolute paths or entry points, just normalize
                                     resolvedPath = args.path.replace(/^\.\/|^\//, '');
                                 }
-                                
+
                                 // Check if the file exists directly in the virtual file system
                                 if (virtualFileSystem[resolvedPath]) {
                                     return { path: resolvedPath, namespace: 'vfs' };
                                 }
-                                
+
                                 // Try to find the file with extensions
                                 const extensions = ['.jsx', '.js'];
                                 for (const ext of extensions) {
@@ -457,21 +459,21 @@ function getZAFClientInitScript(mock, zafMockData) {
                                         return { path: pathWithExt, namespace: 'vfs' };
                                     }
                                 }
-                                
+
                                 // Look for partial matches (like components/HelloWorld matching components/HelloWorld.jsx)
                                 const possibleMatches = Object.keys(virtualFileSystem).filter(
                                     (key) =>
                                         key.startsWith(resolvedPath + '.') || key === resolvedPath,
                                 );
-                                
+
                                 if (possibleMatches.length > 0) {
                                     return { path: possibleMatches[0], namespace: 'vfs' };
                                 }
-                                
+
                                 // File not found in virtual filesystem, treat as external
                                 return { external: true };
                             });
-                            
+
                             // Load files from our virtual file system
                             build.onLoad({ filter: /.*/, namespace: 'vfs' }, (args) => {
                                 const content = virtualFileSystem[args.path];
@@ -480,23 +482,23 @@ function getZAFClientInitScript(mock, zafMockData) {
                                         errors: [{ text: 'Could not load file: ' + args.path }],
                                     };
                                 }
-                                
+
                                 // Determine appropriate loader based on file extension
                                 const getLoader = () => {
                                     // JSX files
                                     if (args.path.endsWith('.jsx')) {
                                         return 'jsx';
                                     }
-                                    
+
                                     if (args.path.endsWith('.css')) {
                                         return 'css';
                                     }
-                                    
+
                                     // Files with no extension but contain React
                                     if (!args.path.includes('.') && content.includes('React')) {
                                         return 'jsx';
                                     }
-                                    
+
                                     // JS files that might contain JSX
                                     if (
                                         args.path.endsWith('.js') &&
@@ -505,11 +507,11 @@ function getZAFClientInitScript(mock, zafMockData) {
                                     ) {
                                         return 'jsx';
                                     }
-                                    
+
                                     // Default to js loader
                                     return 'js';
                                 };
-                                
+
                                 return {
                                     contents: content,
                                     loader: getLoader(),
@@ -519,21 +521,21 @@ function getZAFClientInitScript(mock, zafMockData) {
                     },
                 ],
             });
-            
+
             // Get the bundled code
             const bundledCode = result.outputFiles?.[0]?.text;
             const mockJS = appCode['mock.js'];
-            
+
             if (!bundledCode) {
                 throw new Error('Failed to generate bundle');
             }
-            
+
             // Generate import map
             const importMap = parseImportMaps();
-            
+
             // Create ZAF client script
             const zafClientScript = getZAFClientInitScript(true, mockJS);
-            
+
             // Use the createHTMLTemplate function to generate the final HTML
             return createHTMLTemplate(
                 ERROR_HANDLER,
@@ -543,13 +545,13 @@ function getZAFClientInitScript(mock, zafMockData) {
                 bundledCode
             );
         }
-        
+
         // Basic environment/polyfills some libs expect
         // React dev builds sometimes check process.env.NODE_ENV
-        window.process = window.process || { 
-            env: { 
-                NODE_ENV: 'development' 
-            } 
+        window.process = window.process || {
+            env: {
+                NODE_ENV: 'development'
+            }
         };
 
         const logEl = document.getElementById('log');
@@ -562,7 +564,7 @@ function getZAFClientInitScript(mock, zafMockData) {
         function log(...args) {
             console.log(...args);
             try {
-                const line = args.map(a => 
+                const line = args.map(a =>
                     typeof a === 'string' ? a : JSON.stringify(a, null, 2)
                 ).join(' ');
                 logEl.textContent += (line + '\n');
@@ -577,7 +579,7 @@ function getZAFClientInitScript(mock, zafMockData) {
 
         function showError(msg, err) {
             errorEl.style.display = 'block';
-            errorEl.textContent = (msg || 'Error:') + '\n' + 
+            errorEl.textContent = (msg || 'Error:') + '\n' +
                 (err && (err.stack || err.message || String(err)) || '');
         }
 
@@ -607,12 +609,12 @@ function getZAFClientInitScript(mock, zafMockData) {
         function revokeAllBlobs() {
             try {
                 if (current.bootstrapUrl) URL.revokeObjectURL(current.bootstrapUrl);
-            } catch {}
+            } catch { }
             current.bootstrapUrl = null;
 
             try {
                 for (const url of current.blobUrls.values()) URL.revokeObjectURL(url);
-            } catch {}
+            } catch { }
             current.blobUrls.clear();
         }
 
@@ -686,8 +688,8 @@ function getZAFClientInitScript(mock, zafMockData) {
         function extractFiles(payload) {
             // Accept either {output: [...] } or [...] directly
             console.log('extractFiles payload:', payload);
-            const arr = Array.isArray(payload?.output) ? payload.output : 
-                       (Array.isArray(payload) ? payload : null);
+            const arr = Array.isArray(payload?.output) ? payload.output :
+                (Array.isArray(payload) ? payload : null);
             if (!Array.isArray(arr)) return [];
 
             // Your items look like { args: { filePath, fileContent, operation } }
@@ -701,9 +703,9 @@ function getZAFClientInitScript(mock, zafMockData) {
                 if (!filePath || typeof fileContent !== 'string') continue;
                 if (operation && operation !== 'add' && operation !== 'update') continue;
 
-                files.push({ 
-                    filePath: normalizePath(filePath), 
-                    fileContent 
+                files.push({
+                    filePath: normalizePath(filePath),
+                    fileContent
                 });
             }
             return files;
@@ -816,7 +818,7 @@ function getZAFClientInitScript(mock, zafMockData) {
             external.add('react-dom');
             external.add('react-dom/client');
             external.add('styled-components');
-            
+
             // Add Zendesk Garden packages
             [
                 '@zendeskgarden/react-theming',
@@ -866,13 +868,13 @@ function getZAFClientInitScript(mock, zafMockData) {
             current.importMapEl = im;
 
             // Create bootstrap module
-            const hasMock = fileSet.has('mock.js') || fileSet.has('mock.jsx') || 
-                           fileSet.has('mock.ts') || fileSet.has('mock.tsx');
+            const hasMock = fileSet.has('mock.js') || fileSet.has('mock.jsx') ||
+                fileSet.has('mock.ts') || fileSet.has('mock.tsx');
             const mockPath = ['mock.js', 'mock.jsx', 'mock.ts', 'mock.tsx'].find(p => fileSet.has(p));
 
             // Build bootstrap module code using array parts
             const bootstrapParts = [];
-            
+
             bootstrapParts.push("import React from 'react';");
             bootstrapParts.push("import { createRoot } from 'react-dom/client';");
             bootstrapParts.push("");
@@ -883,11 +885,11 @@ function getZAFClientInitScript(mock, zafMockData) {
             bootstrapParts.push("if (!rootEl) throw new Error('Root element #root not found');");
             bootstrapParts.push("");
             bootstrapParts.push("// Optional Zendesk mock if present (side-effects)");
-            
+
             if (hasMock) {
                 bootstrapParts.push("await import('vfs:/" + mockPath + "');");
             }
-            
+
             bootstrapParts.push("");
             bootstrapParts.push("// Load the app entry");
             bootstrapParts.push("const mod = await import('vfs:/" + entry + "');");
@@ -902,7 +904,7 @@ function getZAFClientInitScript(mock, zafMockData) {
             bootstrapParts.push("} else {");
             bootstrapParts.push("    console.warn('No default export detected in " + entry + ". Assuming the module self-mounts');");
             bootstrapParts.push("}");
-            
+
             const bootstrap = bootstrapParts.join('\n');
 
             const bootBlob = new Blob([bootstrap], { type: 'application/javascript' });
@@ -928,20 +930,20 @@ function getZAFClientInitScript(mock, zafMockData) {
             try {
                 log('Raw message data:', event.data);
                 clearError();
-                
+
                 // Extract files from the message
                 const filesData = extractFiles(event.data.data);
                 if (!filesData.length) {
                     setStatus('No files found in message. Expecting event.data.output = [{ args: { filePath, fileContent } }...]');
                     return;
                 }
-                
+
                 setStatus('Building app with esbuild...');
-                
+
                 // Format files into appCode format expected by getAppIndexHtml
                 const appCode = {};
                 let hasIndex = false;
-                
+
                 // Convert file array to appCode object format
                 for (const file of filesData) {
                     appCode[file.filePath] = file.fileContent;
@@ -949,13 +951,13 @@ function getZAFClientInitScript(mock, zafMockData) {
                         hasIndex = true;
                     }
                 }
-                
+
                 // Ensure we have an index.jsx file
                 if (!hasIndex) {
                     // If no index.jsx, create one by combining all JSX files
                     let componentsImports = [];
                     let firstComponent = null;
-                    
+
                     for (const path in appCode) {
                         if (path.endsWith('.jsx')) {
                             const shortName = path.split('/').pop().split('.')[0];
@@ -963,48 +965,48 @@ function getZAFClientInitScript(mock, zafMockData) {
                             if (!firstComponent) firstComponent = shortName;
                         }
                     }
-                    
+
                     if (firstComponent) {
                         // Create a basic App component that renders the first component
-                        const indexContent = 
-                            componentsImports.join('\n') + 
-                            '\nimport React from \'react\';\n\n' + 
-                            'export default function App() {\n' + 
-                            '  return React.createElement(' + firstComponent + ', null);\n' + 
+                        const indexContent =
+                            componentsImports.join('\n') +
+                            '\nimport React from \'react\';\n\n' +
+                            'export default function App() {\n' +
+                            '  return React.createElement(' + firstComponent + ', null);\n' +
                             '}';
-                        
+
                         appCode['index.jsx'] = indexContent;
                     } else {
                         throw new Error('No JSX components found in the files');
                     }
                 }
-                
+
                 // Use the transformCode logic from Preview.tsx
                 try {
                     // Generate the HTML with bundled code
                     const html = await getAppIndexHtml(appCode);
-                    
+
                     // Clean up previous app
                     unmountCurrentApp();
-                    
+
                     // Create an iframe to render the app
                     const iframe = document.createElement('iframe');
                     iframe.style.width = '100%';
                     iframe.style.height = '100%';
                     iframe.style.border = 'none';
                     iframe.sandbox = 'allow-scripts allow-same-origin allow-forms';
-                    
+
                     // Replace the mount content with our iframe
                     const mountEl = document.getElementById('mount');
                     mountEl.innerHTML = '';
                     mountEl.appendChild(iframe);
-                    
+
                     // Set the iframe content
                     const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
                     iframeDoc.open();
                     iframeDoc.write(html);
                     iframeDoc.close();
-                    
+
                     // Store reference to react root
                     setTimeout(() => {
                         try {
@@ -1013,14 +1015,14 @@ function getZAFClientInitScript(mock, zafMockData) {
                             // Ignore errors getting root
                         }
                     }, 500);
-                    
+
                     setStatus('App mounted successfully');
                 } catch (err) {
                     console.error('Error in transformCode:', err);
                     setStatus('Build failed');
                     showError('ESBuild transformation failed', err);
                 }
-                
+
             } catch (err) {
                 console.error(err);
                 setStatus('Build failed');
@@ -1030,206 +1032,10 @@ function getZAFClientInitScript(mock, zafMockData) {
 
         window.addEventListener('message', handleMessage);
 
-        // Helpful: if you want to test locally, uncomment to simulate a postMessage after 1s
-        
-        setTimeout(() => {
-            window.postMessage({
-                data: {
-                    output: [
-                        {
-                            args: {
-                                filePath: 'index.jsx',
-                                fileContent: `
-import React, { useState } from 'react';
-import { ThemeProvider } from '@zendeskgarden/react-theming';
-import { Button } from '@zendeskgarden/react-buttons';
-import { Tabs, TabList, Tab, TabPanel } from '@zendeskgarden/react-tabs';
-import { Grid, Row, Col } from '@zendeskgarden/react-grid';
-import { Field, Label, Input, Textarea } from '@zendeskgarden/react-forms';
-import { Tag } from '@zendeskgarden/react-tags';
-import { Notification, Title, Close } from '@zendeskgarden/react-notifications';
-import { Dots } from '@zendeskgarden/react-loaders';
-import { Tooltip } from '@zendeskgarden/react-tooltips';
-import { Modal, Header, Body, Footer, FooterItem } from '@zendeskgarden/react-modals';
-import { MD } from '@zendeskgarden/react-typography';
-import { Accordion, AccordionItem, AccordionLabel, AccordionPanel } from '@zendeskgarden/react-accordions';
-import { Pagination } from '@zendeskgarden/react-pagination';
-import { Table, Head, HeaderRow, HeaderCell, Body as TableBody, Row as TableRow, Cell } from '@zendeskgarden/react-tables';
 
-export default function App() {
-  const [selectedTab, setSelectedTab] = useState(0);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [showNotification, setShowNotification] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [expandedItems, setExpandedItems] = useState(['item-1']);
-  
-  // Sample data for the table
-  const data = [
-    { id: 1, name: 'Product A', category: 'Electronics', price: '$199.99' },
-    { id: 2, name: 'Product B', category: 'Clothing', price: '$49.99' },
-    { id: 3, name: 'Product C', category: 'Home', price: '$129.99' },
-  ];
-  
-  const simulateLoading = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      setShowNotification(true);
-    }, 1500);
-  };
-
-  return (
-    <ThemeProvider>
-      <div style={{padding: '20px', fontFamily: 'system-ui, sans-serif'}}>
-        <h1>Garden Components Demo</h1>
-        
-        <Grid>
-          <Row>
-            <Col size={12}>
-              <Tabs selectedItem={selectedTab} onChange={setSelectedTab}>
-                <TabList>
-                  <Tab item={0}>Form</Tab>
-                  <Tab item={1}>Tags</Tab>
-                  <Tab item={2}>Actions</Tab>
-                  <Tab item={3}>Tables</Tab>
-                  <Tab item={4}>Accordions</Tab>
-                </TabList>
-                <TabPanel item={0} style={{padding: '20px 0'}}>
-                  <Field>
-                    <Label>Name</Label>
-                    <Input placeholder="Enter your name" />
-                  </Field>
-                  <Field style={{marginTop: '16px'}}>
-                    <Label>Description</Label>
-                    <Textarea placeholder="Enter a description" />
-                  </Field>
-                </TabPanel>
-                <TabPanel item={1} style={{padding: '20px 0'}}>
-                  <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
-                    <Tag>Default Tag</Tag>
-                    <Tag hue="green">Success</Tag>
-                    <Tag hue="blue">Info</Tag>
-                    <Tag hue="yellow">Warning</Tag>
-                    <Tag hue="red">Error</Tag>
-                  </div>
-                </TabPanel>
-                <TabPanel item={2} style={{padding: '20px 0'}}>
-                  <div style={{display: 'flex', gap: '12px'}}>
-                    <Tooltip content="Opens a modal dialog">
-                      <Button onClick={() => setIsModalOpen(true)}>
-                        Open Modal
-                      </Button>
-                    </Tooltip>
-                    
-                    <Button isPrimary onClick={simulateLoading} disabled={isLoading}>
-                      {isLoading ? <Dots size="20" /> : 'Save Changes'}
-                    </Button>
-                  </div>
-                </TabPanel>
-                <TabPanel item={3} style={{padding: '20px 0'}}>
-                  <Table style={{marginBottom: '16px'}}>
-                    <Head>
-                      <HeaderRow>
-                        <HeaderCell>ID</HeaderCell>
-                        <HeaderCell>Name</HeaderCell>
-                        <HeaderCell>Category</HeaderCell>
-                        <HeaderCell>Price</HeaderCell>
-                      </HeaderRow>
-                    </Head>
-                    <TableBody>
-                      {data.map(item => (
-                        <TableRow key={item.id}>
-                          <Cell>{item.id}</Cell>
-                          <Cell>{item.name}</Cell>
-                          <Cell>{item.category}</Cell>
-                          <Cell>{item.price}</Cell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                  <div style={{display: 'flex', justifyContent: 'center'}}>
-                    <Pagination
-                      totalPages={5}
-                      currentPage={currentPage}
-                      onChange={setCurrentPage}
-                    />
-                  </div>
-                </TabPanel>
-                <TabPanel item={4} style={{padding: '20px 0'}}>
-                  <Accordion
-                    level={3}
-                    expandedSections={expandedItems}
-                    onChange={(expandedSections) => setExpandedItems(expandedSections)}
-                  >
-                    <AccordionItem id="item-1">
-                      <AccordionLabel>Section 1</AccordionLabel>
-                      <AccordionPanel>
-                        <p>This is the content for section 1.</p>
-                      </AccordionPanel>
-                    </AccordionItem>
-                    <AccordionItem id="item-2">
-                      <AccordionLabel>Section 2</AccordionLabel>
-                      <AccordionPanel>
-                        <p>This is the content for section 2.</p>
-                      </AccordionPanel>
-                    </AccordionItem>
-                    <AccordionItem id="item-3">
-                      <AccordionLabel>Section 3</AccordionLabel>
-                      <AccordionPanel>
-                        <p>This is the content for section 3.</p>
-                      </AccordionPanel>
-                    </AccordionItem>
-                  </Accordion>
-                </TabPanel>
-              </Tabs>
-            </Col>
-          </Row>
-        </Grid>
-        
-        {showNotification && (
-          <Notification type="success" style={{marginTop: '20px'}}>
-            <Title>Success!</Title>
-            <MD>Your changes have been saved.</MD>
-            <Close onClick={() => setShowNotification(false)} />
-          </Notification>
-        )}
-        
-        {isModalOpen && (
-          <Modal onClose={() => setIsModalOpen(false)}>
-            <Header>Confirmation</Header>
-            <Body>Are you sure you want to proceed with this action?</Body>
-            <Footer>
-              <FooterItem>
-                <Button isBasic onClick={() => setIsModalOpen(false)}>
-                  Cancel
-                </Button>
-              </FooterItem>
-              <FooterItem>
-                <Button isPrimary onClick={() => {
-                  setIsModalOpen(false);
-                  simulateLoading();
-                }}>
-                  Confirm
-                </Button>
-              </FooterItem>
-            </Footer>
-          </Modal>
-        )}
-      </div>
-    </ThemeProvider>
-  );
-}`,
-                                operation: 'add'
-                            }
-                        }
-                    ]
-                }
-            }, '*');
-        }, 1000);
-        
-    // Close out all potential template literals
-    var closeAll = '';
+        // Close out all potential template literals
+        var closeAll = '';
     </script>
 </body>
+
 </html>
