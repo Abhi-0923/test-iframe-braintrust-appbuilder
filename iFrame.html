@@ -105,6 +105,7 @@
 
         [type=button],[type=reset],[type=submit],button{
             -webkit-appearance:button;
+            appearance:button;
         }
 
         legend{
@@ -121,6 +122,7 @@
 
         [type=search]{
             -webkit-appearance:textfield;
+            appearance:textfield;
             outline-offset:-2px;
         }
 
@@ -325,18 +327,23 @@
 
         // Extract files from message
         function extractFiles(payload) {
+            // Handle various payload formats
             const arr = Array.isArray(payload?.output) ? payload.output : 
-                       (Array.isArray(payload) ? payload : null);
+                       (Array.isArray(payload) ? payload : 
+                        (payload?.data && Array.isArray(payload.data) ? payload.data : null));
+            
             if (!Array.isArray(arr)) return [];
 
             const files = [];
             for (const item of arr) {
+                // Handle different message formats
                 const args = item?.args || item;
                 const filePath = args?.filePath;
                 const fileContent = args?.fileContent;
-                const operation = args?.operation;
+                const operation = args?.operation || args?.type;
 
-                if (!filePath.includes('.md')) continue;
+                // Skip markdown files
+                if (filePath.includes('.md')) continue;
                 if (!filePath || typeof fileContent !== 'string') continue;
                 if (operation && operation !== 'add' && operation !== 'update') continue;
 
@@ -567,7 +574,7 @@
             try {
                 log('Received message:', event.data);
                 
-                const files = extractFiles(event.data.data);
+                const files = extractFiles(event.data);
                 if (!files.length) {
                     setStatus('No files found in message');
                     return;
