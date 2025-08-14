@@ -438,158 +438,231 @@
 
         // Build and mount the app
         async function buildAndMountApp(files) {
+    try {
+        setStatus('Building app...');
+        cleanupCurrentApp();
+
+        // Ensure root element exists
+        let rootEl = document.getElementById('root');
+        if (!rootEl) {
+            rootEl = document.createElement('div');
+            rootEl.id = 'root';
+            document.body.appendChild(rootEl);
+        }
+
+        // Find entry point (index.jsx)
+        const entryFile = files.find(f => f.filePath === 'index.jsx');
+        if (!entryFile) {
+            throw new Error('No index.jsx found');
+        }
+
+        // Find mock file
+        const mockFile = files.find(f => f.filePath === 'mock.js');
+
+        // Create virtual file system
+        const vfs = createVirtualFileSystem(files);
+
+        // Set up base import map (external dependencies)
+        const imports = parseImportMaps();
+        
+        // Process all files and create blob URLs
+        const blobUrls = [];
+        files.forEach(file => {
             try {
-                setStatus('Building app...');
-                cleanupCurrentApp();
-
-                // Find entry point (index.jsx)
-                const entryFile = files.find(f => f.filePath === 'index.jsx');
-                if (!entryFile) {
-                    throw new Error('No index.jsx found');
-                }
-
-                // Find mock file
-                const mockFile = files.find(f => f.filePath === 'mock.js');
-
-                // Create virtual file system
-                const vfs = createVirtualFileSystem(files);
-
-                // Set up import map
-                const imports = parseImportMaps();
-                
-                // Add VFS entries to import map
-                files.forEach(file => {
-                    const transpiledCode = transpile(
-                        resolveImports(file.fileContent, file.filePath, vfs), 
-                        file.filePath
-                    );
-                    const blob = new Blob([transpiledCode], { type: 'application/javascript' });
-                    const url = URL.createObjectURL(blob);
-                    // Use absolute path in import map
-                    imports[`/vfs/${file.filePath}`] = url;
-                });
-
-                // Create and inject import map
-                const importMapScript = document.createElement('script');
-                importMapScript.type = 'importmap';
-                importMapScript.textContent = JSON.stringify({ imports }, null, 2);
-                document.head.appendChild(importMapScript);
-                currentImportMap = importMapScript;
-
-                // Create app wrapper with error boundary (similar to production)
-                const appWrapperCode = `
-                    import { createRoot } from "react-dom/client";
-                    import React from "react";
-
-                    class ErrorBoundary extends React.Component {
-                        constructor(props) {
-                            super(props);
-                            this.state = { hasError: false, error: null };
-                        }
-
-                        static getDerivedStateFromError(error) {
-                            return { hasError: true, error: error };
-                        }
-
-                        componentDidCatch(error, errorInfo) {
-                            window.parent.postMessage({
-                                type: 'iframe-error',
-                                error: error.toString(),
-                                errorInfo: JSON.stringify(errorInfo)
-                            }, '*');
-                        }
-
-                        render() {
-                            if (this.state.hasError) {
-                                return React.createElement('div', {
-                                    style: {
-                                        fontSize: '16px', 
-                                        display: 'grid', 
-                                        height: '100vh', 
-                                        width: '100vw', 
-                                        placeContent: 'center',
-                                        padding: '20px',
-                                        textAlign: 'center',
-                                        color: '#d93f4c'
-                                    }
-                                }, React.createElement('div', {}, 
-                                    React.createElement('h4', { style: { marginBottom: '8px' } }, 'An error occurred in your application'),
-                                    React.createElement('pre', { 
-                                        style: {
-                                            background: '#f8f9f9',
-                                            padding: '16px',
-                                            borderRadius: '4px',
-                                            maxWidth: '600px',
-                                            overflow: 'auto',
-                                            textAlign: 'left',
-                                            whiteSpace: 'pre-wrap'
-                                        }
-                                    }, this.state.error?.toString())
-                                ));
-                            }
-                            return this.props.children;
-                        }
-                    }
-
-                    // Dynamically import the app files after they've been registered
-                    const loadApp = async () => {
-                        try {
-                            // Load mock if available
-                            ${mockFile ? `await import("/vfs/${mockFile.filePath}");` : ''}
-                            
-                            // Import the app module dynamically
-                            const AppModule = await import("/vfs/${entryFile.filePath}");
-                            const App = AppModule.default;
-                            
-                            // Create the app with error boundary
-                            const AppWithErrorBoundary = () => React.createElement(
-                                ErrorBoundary, 
-                                {}, 
-                                React.createElement(App, {})
-                            );
-                            
-                            createRoot(document.getElementById('root')).render(
-                                React.createElement(AppWithErrorBoundary, {})
-                            );
-                        } catch (error) {
-                            console.error("Failed to load app:", error);
-                            window.parent.postMessage({
-                                type: 'iframe-error',
-                                error: error.toString(),
-                                stack: error.stack
-                            }, '*');
-                        }
-                    };
-                    
-                    // Load the app
-                    loadApp();
-                    
-                `;
-
-                // Create and execute the app module
-                const appBlob = new Blob([appWrapperCode], { type: 'application/javascript' });
-                const appUrl = URL.createObjectURL(appBlob);
-
-                const moduleScript = document.createElement('script');
-                moduleScript.type = 'module';
-                moduleScript.src = appUrl;
-                moduleScript.onerror = (e) => {
-                    console.error('Failed to load app module:', e);
-                    setStatus('Failed to load app');
-                };
-                
-                document.body.appendChild(moduleScript);
-                currentModuleScript = moduleScript;
-
-                setStatus(`App mounted successfully (Entry: ${entryFile.filePath})`);
-                log('Build complete. Files:', files.map(f => f.filePath));
-
+                const transpiledCode = transpile(
+                    resolveImports(file.fileContent, file.filePath, vfs), 
+                    file.filePath
+                );
+                const blob = new Blob([transpiledCode], { type: 'application/javascript' });
+                const url = URL.createObjectURL(blob);
+                blobUrls.push(url); // Track for cleanup
+                imports[`/vfs/${file.filePath}`] = url;
             } catch (error) {
-                console.error('Build error:', error);
-                setStatus('Build failed: ' + error.message);
+                console.error(`Error processing file ${file.filePath}:`, error);
                 throw error;
             }
+        });
+
+        // Create and inject import map FIRST
+        const importMapScript = document.createElement('script');
+        importMapScript.type = 'importmap';
+        importMapScript.textContent = JSON.stringify({ imports }, null, 2);
+        document.head.appendChild(importMapScript);
+        currentImportMap = importMapScript;
+
+        // Wait for import map to be processed
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Create app wrapper with better error handling
+        const appWrapperCode = `
+            import { createRoot } from "react-dom/client";
+            import React from "react";
+
+            class ErrorBoundary extends React.Component {
+                constructor(props) {
+                    super(props);
+                    this.state = { hasError: false, error: null };
+                }
+
+                static getDerivedStateFromError(error) {
+                    return { hasError: true, error: error };
+                }
+
+                componentDidCatch(error, errorInfo) {
+                    console.error('App Error:', error, errorInfo);
+                    window.parent.postMessage({
+                        type: 'iframe-error',
+                        error: error.toString(),
+                        errorInfo: JSON.stringify(errorInfo)
+                    }, '*');
+                }
+
+                render() {
+                    if (this.state.hasError) {
+                        return React.createElement('div', {
+                            style: {
+                                fontSize: '16px', 
+                                display: 'grid', 
+                                height: '100vh', 
+                                width: '100vw', 
+                                placeContent: 'center',
+                                padding: '20px',
+                                textAlign: 'center',
+                                color: '#d93f4c'
+                            }
+                        }, React.createElement('div', {}, 
+                            React.createElement('h4', { style: { marginBottom: '8px' } }, 'An error occurred in your application'),
+                            React.createElement('pre', { 
+                                style: {
+                                    background: '#f8f9f9',
+                                    padding: '16px',
+                                    borderRadius: '4px',
+                                    maxWidth: '600px',
+                                    overflow: 'auto',
+                                    textAlign: 'left',
+                                    whiteSpace: 'pre-wrap'
+                                }
+                            }, this.state.error?.toString())
+                        ));
+                    }
+                    return this.props.children;
+                }
+            }
+
+            // Load app with proper sequencing
+            const loadApp = async () => {
+                try {
+                    console.log('Loading app...');
+                    
+                    // Check if root exists
+                    const rootElement = document.getElementById('root');
+                    if (!rootElement) {
+                        throw new Error('Root element not found');
+                    }
+
+                    // Load mock if available
+                    ${mockFile ? `
+                    try {
+                        await import("/vfs/${mockFile.filePath}");
+                        console.log('Mock loaded successfully');
+                    } catch (mockError) {
+                        console.warn('Mock failed to load:', mockError);
+                    }
+                    ` : 'console.log("No mock file found");'}
+                    
+                    // Import the app module
+                    console.log('Importing app module...');
+                    const AppModule = await import("/vfs/${entryFile.filePath}");
+                    
+                    if (!AppModule.default) {
+                        throw new Error('App module does not have a default export');
+                    }
+                    
+                    const App = AppModule.default;
+                    console.log('App module loaded:', App);
+                    
+                    // Create the app with error boundary
+                    const AppWithErrorBoundary = () => React.createElement(
+                        ErrorBoundary, 
+                        {}, 
+                        React.createElement(App, {})
+                    );
+                    
+                    // Mount the app
+                    console.log('Creating React root...');
+                    const root = createRoot(rootElement);
+                    root.render(React.createElement(AppWithErrorBoundary, {}));
+                    
+                    console.log('App mounted successfully!');
+                    
+                } catch (error) {
+                    console.error("Failed to load app:", error);
+                    
+                    // Show error in root if possible
+                    const rootElement = document.getElementById('root');
+                    if (rootElement) {
+                        rootElement.innerHTML = \`
+                            <div style="padding: 20px; color: red; text-align: center;">
+                                <h3>Failed to load app</h3>
+                                <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; text-align: left;">\${error.toString()}</pre>
+                            </div>
+                        \`;
+                    }
+                    
+                    window.parent.postMessage({
+                        type: 'iframe-error',
+                        error: error.toString(),
+                        stack: error.stack
+                    }, '*');
+                }
+            };
+            
+            // Load the app after a short delay to ensure everything is ready
+            setTimeout(loadApp, 50);
+        `;
+
+        // Create and execute the app module
+        const appBlob = new Blob([appWrapperCode], { type: 'application/javascript' });
+        const appUrl = URL.createObjectURL(appBlob);
+        blobUrls.push(appUrl);
+
+        const moduleScript = document.createElement('script');
+        moduleScript.type = 'module';
+        moduleScript.src = appUrl;
+        
+        moduleScript.onload = () => {
+            console.log('App module script loaded successfully');
+        };
+        
+        moduleScript.onerror = (e) => {
+            console.error('Failed to load app module:', e);
+            setStatus('Failed to load app module');
+        };
+        
+        document.body.appendChild(moduleScript);
+        currentModuleScript = moduleScript;
+
+        setStatus(`App building... (Entry: ${entryFile.filePath})`);
+        log('Build initiated. Files:', files.map(f => f.filePath));
+
+    } catch (error) {
+        console.error('Build error:', error);
+        setStatus('Build failed: ' + error.message);
+        
+        // Show error in root if possible
+        const rootElement = document.getElementById('root');
+        if (rootElement) {
+            rootElement.innerHTML = `
+                <div style="padding: 20px; color: red; text-align: center;">
+                    <h3>Build failed</h3>
+                    <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; text-align: left;">${error.toString()}</pre>
+                </div>
+            `;
         }
+        
+        throw error;
+    }
+}
 
         // Handle incoming messages
         async function handleMessage(event) {
