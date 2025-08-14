@@ -2,71 +2,596 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>React Hello World - CDN</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1, maximum-scale=1">
+    
+    <!-- Error Handler -->
+    <script>
+        window.onerror = function(message, source, lineno, colno, error) {
+            console.log({error});
+            window.parent.postMessage({
+                type: 'iframe-error',
+                error: error?.toString(),
+                stack: error?.stack,
+                message,
+                source,
+                lineno,
+                colno
+            }, '*');
+            return false;
+        };
+
+        // Also catch unhandled promise rejections
+        window.addEventListener('unhandledrejection', function(event) {
+            window.parent.postMessage({
+                type: 'iframe-error',
+                error: event.reason?.toString(),
+                stack: event.reason?.stack
+            }, '*');
+        });
+    </script>
+
+    <!-- Bedrock Styles -->
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f5f5f5;
+        html {
+            --tw-bg-opacity: 1;
+            --tw-text-opacity: 1;
+            font-feature-settings: "kern", "kern";
+            background-color: #fff;
+            box-sizing: border-box;
+            overflow-y: auto!important;
+            color: #293239;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen-Sans, Ubuntu, Cantarell, Helvetica Neue, Arial, sans-serif;
+            font-kerning: normal;
+            font-size: 14px;
+            line-height: 20px;
+            min-height: 100%;
         }
-        #root {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+
+        *,:after,:before{
+            box-sizing:border-box;
+        }
+
+        html{
+            font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif,Apple Color Emoji,Segoe UI Emoji;
+            line-height:1.15;
+            -webkit-text-size-adjust:100%;
+            -moz-tab-size:4;
+              -o-tab-size:4;
+                 tab-size:4;
+        }
+
+        body{
+            margin:0;
+        }
+
+        b,strong{
+            font-weight:bolder;
+        }
+
+        code,kbd,pre,samp{
+            font-family:ui-monospace,SFMono-Regular,Consolas,Liberation Mono,Menlo,monospace;
+            font-size:1em;
+        }
+
+        small{
+            font-size:80%;
+        }
+
+        sub,sup{
+            font-size:75%;
+            line-height:0;
+            position:relative;
+            vertical-align:baseline;
+        }
+
+        sub{
+            bottom:-.25em;
+        }
+
+        sup{
+            top:-.5em;
+        }
+
+        table{
+            border-color:currentcolor;
+        }
+
+        button,input,optgroup,select,textarea{
+            font-family:inherit;
+            font-size:100%;
+            line-height:1.15;
+            margin:0;
+        }
+
+        [type=button],[type=reset],[type=submit],button{
+            -webkit-appearance:button;
+        }
+
+        legend{
+            padding:0;
+        }
+
+        progress{
+            vertical-align:baseline;
+        }
+
+        ::-webkit-inner-spin-button,::-webkit-outer-spin-button{
+            height:auto;
+        }
+
+        [type=search]{
+            -webkit-appearance:textfield;
+            outline-offset:-2px;
+        }
+
+        ::-webkit-search-decoration{
+            -webkit-appearance:none;
+        }
+
+        ::-webkit-file-upload-button{
+            -webkit-appearance:button;
+            font:inherit;
+        }
+
+        summary{
+            display:list-item;
+        }
+
+        html{background-color:#fff;min-height:100%; box-sizing:border-box; overflow-y:scroll; line-height:20px; color:#293239;
+          font-feature-settings:"kern", "kern";
+          font-kerning:normal;
+          font-family:system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,Arial,sans-serif;
+          font-size:14px;}
+
+        *{ font-weight:inherit; }
+
+        *,:after,:before{ box-sizing:inherit; }
+
+        a{color:#1f73b7;}
+
+        b{font-weight:600;}
+
+        button{cursor:pointer;padding:0;}
+
+        button,input,optgroup,select,textarea{line-height:inherit;font-family:inherit;}
+
+        code{font-size:.95em;}
+
+        code,kbd,pre,samp{font-family:SFMono-Regular,Consolas,Liberation Mono,Menlo,Courier,monospace;}
+
+        em{ font-style:inherit; }
+
+        fieldset,iframe{border-width:0;}
+
+        h1,h2,h3,h4,h5,h6{ font-size:inherit; }
+
+        blockquote,dd,dl,fieldset,figure,h1,h2,h3,h4,h5,h6,hr,ol,p,pre,ul{margin:0;padding:0;}
+
+        hr{
+          border:none;
+          border-top:1px solid;
+          border-color:#d8dcde;
+        }
+
+        ins,u{text-decoration-line:none;}
+
+        ol,ul{list-style-type:none;}
+
+        img{max-width:100%;}
+
+        strong{ font-weight:inherit; }
+
+        svg{max-height:100%;}
+
+        [tabindex="-1"]:focus{ outline:none !important; }
+
+        /* Status bar styles */
+        #toolbar {
+            background: #111827;
+            color: #e5e7eb;
+            padding: 8px 12px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        #status {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        #toolbar button {
+            background: #374151;
+            color: #e5e7eb;
+            border: 1px solid #4b5563;
+            border-radius: 4px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        #toolbar button:hover {
+            background: #4b5563;
         }
     </style>
+
+    <title>Zendesk App Builder</title>
+    
+    <!-- Import Map will be injected here dynamically -->
+    
+    <!-- Babel for JSX transformation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- ZAF SDK -->
+    <script type="text/javascript" src="https://static.zdassets.com/zendesk_app_framework_sdk/2.0/zaf_sdk.min.js"></script>
 </head>
 <body>
+    <!-- Status toolbar -->
+    <div id="toolbar">
+        <div id="status">Waiting for app files via postMessage...</div>
+        <button id="clearBtn" title="Clear logs">Clear logs</button>
+    </div>
+
+    <!-- Main app container -->
     <div id="root"></div>
 
-    <!-- React CDN -->
-    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
-    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
-    
-    <!-- Babel Standalone for JSX transformation -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.22.5/babel.min.js"></script>
+    <!-- ZAF Client Initialization -->
+    <script type="text/javascript">
+        window.zafClient = ZAFClient.init();
+    </script>
 
-    <!-- Your React App -->
-    <script type="text/babel">
-        const { useState } = React;
+    <script type="module">
+        // CDN Assets Mapping - Same as production
+        const CDN_ASSETS_MAPPING = {
+            'react': 'https://esm.sh/react@18',
+            'react-dom': 'https://esm.sh/react-dom@18?external=react&standalone',
+            'react-dom/client': 'https://esm.sh/react-dom@18/client?external=react&standalone',
+            'styled-components': 'https://esm.sh/styled-components@6.x?external=react&standalone',
+            'pdfjs-dist': 'https://esm.sh/pdfjs-dist@4.10.38?standalone',
+            'tesseract.js': 'https://esm.sh/tesseract.js@6.0.0?standalone',
+            '@zendeskgarden/react-theming': 'https://esm.sh/@zendeskgarden/react-theming@9.x?external=react,styled-components&standalone',
+            '@zendeskgarden/react-buttons': 'https://esm.sh/@zendeskgarden/react-buttons@9.x?external=react,styled-components,@zendeskgarden/react-theming&standalone',
+            '@zendeskgarden/react-grid': 'https://esm.sh/@zendeskgarden/react-grid@9.x?external=react,styled-components,@zendeskgarden/react-theming&standalone',
+            '@zendeskgarden/react-forms': 'https://esm.sh/@zendeskgarden/react-forms@9.x?external=react,styled-components,@zendeskgarden/react-theming&standalone',
+            '@zendeskgarden/react-tables': 'https://esm.sh/@zendeskgarden/react-tables@9.x?external=react,styled-components,@zendeskgarden/react-theming&standalone',
+            '@zendeskgarden/react-typography': 'https://esm.sh/@zendeskgarden/react-typography@9.x?external=react,styled-components,@zendeskgarden/react-theming&standalone',
+            '@zendeskgarden/react-loaders': 'https://esm.sh/@zendeskgarden/react-loaders@9.x?external=react,styled-components,@zendeskgarden/react-theming&standalone',
+            '@zendeskgarden/react-tags': 'https://esm.sh/@zendeskgarden/react-tags@9.x?external=react,styled-components,@zendeskgarden/react-theming&standalone',
+            '@zendeskgarden/react-tabs': 'https://esm.sh/@zendeskgarden/react-tabs@9.x?external=react,styled-components,@zendeskgarden/react-theming&standalone',
+            '@zendeskgarden/react-accordions': 'https://esm.sh/@zendeskgarden/react-accordions@9.x?external=react,styled-components,@zendeskgarden/react-theming&standalone',
+            '@zendeskgarden/react-tooltips': 'https://esm.sh/@zendeskgarden/react-tooltips@9.x?external=react,styled-components,@zendeskgarden/react-theming&standalone',
+            '@zendeskgarden/react-modals': 'https://esm.sh/@zendeskgarden/react-modals@9.x?external=react,styled-components,@zendeskgarden/react-theming&standalone',
+            '@zendeskgarden/react-notifications': 'https://esm.sh/@zendeskgarden/react-notifications@9.x?external=react,styled-components,@zendeskgarden/react-theming&standalone',
+            '@zendeskgarden/react-pagination': 'https://esm.sh/@zendeskgarden/react-pagination@9.x?external=react,styled-components,@zendeskgarden/react-theming&standalone',
+        };
 
-        function HelloWorld() {
-            const [count, setCount] = useState(0);
+        const statusEl = document.getElementById('status');
+        const clearBtn = document.getElementById('clearBtn');
 
-            return (
-                <div>
-                    <h1>Hello World from React!</h1>
-                    <p>This React app is running from CDN without any build process.</p>
-                    <div style={{ marginTop: '20px' }}>
-                        <button 
-                            onClick={() => setCount(count + 1)}
-                            style={{
-                                padding: '10px 20px',
-                                fontSize: '16px',
-                                backgroundColor: '#61dafb',
-                                border: 'none',
-                                borderRadius: '4px',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            Clicked {count} times
-                        </button>
-                    </div>
-                    <div style={{ marginTop: '20px', color: '#666' }}>
-                        <small>React {React.version} loaded from CDN</small>
-                    </div>
-                </div>
-            );
+        function setStatus(text) {
+            statusEl.textContent = text;
         }
 
-        // Mount the React app
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<HelloWorld />);
+        function log(...args) {
+            console.log(...args);
+        }
+
+        clearBtn.onclick = () => {
+            console.clear();
+        };
+
+        // Current app state
+        let currentImportMap = null;
+        let currentModuleScript = null;
+
+        function cleanupCurrentApp() {
+            // Remove current import map
+            if (currentImportMap && currentImportMap.parentNode) {
+                currentImportMap.parentNode.removeChild(currentImportMap);
+            }
+            currentImportMap = null;
+
+            // Remove current module script
+            if (currentModuleScript && currentModuleScript.parentNode) {
+                currentModuleScript.parentNode.removeChild(currentModuleScript);
+            }
+            currentModuleScript = null;
+
+            // Clear root
+            document.getElementById('root').innerHTML = '';
+        }
+
+        // Parse import maps using production logic
+        function parseImportMaps() {
+            const imports = {};
+            
+            Object.keys(CDN_ASSETS_MAPPING).forEach((key) => {
+                const value = CDN_ASSETS_MAPPING[key];
+                if (!value) return;
+                
+                try {
+                    new URL(value);
+                    imports[key] = value;
+                } catch (error) {
+                    // Skip invalid URLs
+                }
+            });
+
+            return imports;
+        }
+
+        // Extract files from message
+        function extractFiles(payload) {
+            const arr = Array.isArray(payload?.output) ? payload.output : 
+                       (Array.isArray(payload) ? payload : null);
+            if (!Array.isArray(arr)) return [];
+
+            const files = [];
+            for (const item of arr) {
+                const args = item?.args || item;
+                const filePath = args?.filePath;
+                const fileContent = args?.fileContent;
+                const operation = args?.operation;
+
+                if (!filePath.includes('.jsx')) continue;
+                if (!filePath || typeof fileContent !== 'string') continue;
+                if (operation && operation !== 'add' && operation !== 'update') continue;
+
+                files.push({ 
+                    filePath: filePath.replace(/^[.\\/]+/, ''), 
+                    fileContent 
+                });
+            }
+            return files;
+        }
+
+        // Create virtual file system and resolve imports
+        function createVirtualFileSystem(files) {
+            const vfs = {};
+            files.forEach(file => {
+                vfs[file.filePath] = file.fileContent;
+            });
+            return vfs;
+        }
+
+        // Transpile JSX/TSX using Babel
+        function transpile(code, filename) {
+            try {
+                return Babel.transform(code, {
+                    filename,
+                    presets: [
+                        ['env', { targets: { esmodules: true } }],
+                        'react',
+                        'typescript'
+                    ],
+                    sourceType: 'module',
+                    plugins: [],
+                    sourceMaps: 'inline',
+                    retainLines: true
+                }).code + `\n//# sourceURL=${filename}\n`;
+            } catch (error) {
+                console.error('Transpilation error:', error);
+                throw error;
+            }
+        }
+
+        // Resolve relative imports
+        function resolveImports(code, currentFile, vfs) {
+            const importRegex = /(import\s+(?:[^'"]*from\s+)?|export\s+(?:[^'"]*from\s+)?|import\s*\()\s*(['"`])([^'"]+)\2/g;
+            
+            return code.replace(importRegex, (match, prefix, quote, importPath) => {
+                // Skip external imports (not starting with . or /)
+                if (!importPath.startsWith('./') && !importPath.startsWith('../') && !importPath.startsWith('/')) {
+                    return match;
+                }
+
+                // Resolve relative path
+                const currentDir = currentFile.split('/').slice(0, -1).join('/');
+                let resolvedPath = importPath;
+
+                if (importPath.startsWith('./') || importPath.startsWith('../')) {
+                    const pathParts = (currentDir ? currentDir + '/' + importPath : importPath).split('/');
+                    const resolved = [];
+                    
+                    for (const part of pathParts) {
+                        if (part === '.' || part === '') continue;
+                        if (part === '..') {
+                            resolved.pop();
+                        } else {
+                            resolved.push(part);
+                        }
+                    }
+                    
+                    resolvedPath = resolved.join('/');
+                }
+
+                // Try to find the file with different extensions
+                const possiblePaths = [
+                    resolvedPath,
+                    resolvedPath + '.js',
+                    resolvedPath + '.jsx',
+                    resolvedPath + '.ts',
+                    resolvedPath + '.tsx'
+                ];
+
+                for (const path of possiblePaths) {
+                    if (vfs[path]) {
+                        return `${prefix}${quote}./vfs/${path}${quote}`;
+                    }
+                }
+
+                // If not found, keep original
+                return match;
+            });
+        }
+
+        // Build and mount the app
+        async function buildAndMountApp(files) {
+            try {
+                setStatus('Building app...');
+                cleanupCurrentApp();
+
+                // Find entry point (index.jsx)
+                const entryFile = files.find(f => f.filePath === 'index.jsx');
+                if (!entryFile) {
+                    throw new Error('No index.jsx found');
+                }
+
+                // Find mock file
+                const mockFile = files.find(f => f.filePath === 'mock.js');
+
+                // Create virtual file system
+                const vfs = createVirtualFileSystem(files);
+
+                // Set up import map
+                const imports = parseImportMaps();
+                
+                // Add VFS entries to import map
+                files.forEach(file => {
+                    const transpiledCode = transpile(
+                        resolveImports(file.fileContent, file.filePath, vfs), 
+                        file.filePath
+                    );
+                    const blob = new Blob([transpiledCode], { type: 'application/javascript' });
+                    const url = URL.createObjectURL(blob);
+                    imports[`./vfs/${file.filePath}`] = url;
+                });
+
+                // Create and inject import map
+                const importMapScript = document.createElement('script');
+                importMapScript.type = 'importmap';
+                importMapScript.textContent = JSON.stringify({ imports }, null, 2);
+                document.head.appendChild(importMapScript);
+                currentImportMap = importMapScript;
+
+                // Create app wrapper with error boundary (similar to production)
+                const appWrapperCode = `
+                    import { createRoot } from "react-dom/client";
+                    import React from "react";
+                    ${mockFile ? `import "./vfs/${mockFile.filePath}";` : ''}
+                    import App from "./vfs/${entryFile.filePath}";
+
+                    class ErrorBoundary extends React.Component {
+                        constructor(props) {
+                            super(props);
+                            this.state = { hasError: false, error: null };
+                        }
+
+                        static getDerivedStateFromError(error) {
+                            return { hasError: true, error: error };
+                        }
+
+                        componentDidCatch(error, errorInfo) {
+                            window.parent.postMessage({
+                                type: 'iframe-error',
+                                error: error.toString(),
+                                errorInfo: JSON.stringify(errorInfo)
+                            }, '*');
+                        }
+
+                        render() {
+                            if (this.state.hasError) {
+                                return React.createElement('div', {
+                                    style: {
+                                        fontSize: '16px', 
+                                        display: 'grid', 
+                                        height: '100vh', 
+                                        width: '100vw', 
+                                        placeContent: 'center',
+                                        padding: '20px',
+                                        textAlign: 'center',
+                                        color: '#d93f4c'
+                                    }
+                                }, React.createElement('div', {}, 
+                                    React.createElement('h4', { style: { marginBottom: '8px' } }, 'An error occurred in your application'),
+                                    React.createElement('pre', { 
+                                        style: {
+                                            background: '#f8f9f9',
+                                            padding: '16px',
+                                            borderRadius: '4px',
+                                            maxWidth: '600px',
+                                            overflow: 'auto',
+                                            textAlign: 'left',
+                                            whiteSpace: 'pre-wrap'
+                                        }
+                                    }, this.state.error?.toString())
+                                ));
+                            }
+                            return this.props.children;
+                        }
+                    }
+
+                    const AppWithErrorBoundary = () => React.createElement(ErrorBoundary, {}, React.createElement(App, {}));
+
+                    try {
+                        createRoot(document.getElementById('root')).render(React.createElement(AppWithErrorBoundary, {}));
+                    } catch (error) {
+                        console.log({error});
+                        window.parent.postMessage({
+                            type: 'iframe-error',
+                            error: error.toString(),
+                        }, '*');
+                    }
+                `;
+
+                // Create and execute the app module
+                const appBlob = new Blob([appWrapperCode], { type: 'application/javascript' });
+                const appUrl = URL.createObjectURL(appBlob);
+
+                const moduleScript = document.createElement('script');
+                moduleScript.type = 'module';
+                moduleScript.src = appUrl;
+                moduleScript.onerror = (e) => {
+                    console.error('Failed to load app module:', e);
+                    setStatus('Failed to load app');
+                };
+                
+                document.body.appendChild(moduleScript);
+                currentModuleScript = moduleScript;
+
+                setStatus(`App mounted successfully (Entry: ${entryFile.filePath})`);
+                log('Build complete. Files:', files.map(f => f.filePath));
+
+            } catch (error) {
+                console.error('Build error:', error);
+                setStatus('Build failed: ' + error.message);
+                throw error;
+            }
+        }
+
+        // Handle incoming messages
+        async function handleMessage(event) {
+            try {
+                log('Received message:', event.data);
+                
+                const files = extractFiles(event.data.data);
+                if (!files.length) {
+                    setStatus('No files found in message');
+                    return;
+                }
+
+                await buildAndMountApp(files);
+
+            } catch (err) {
+                console.error('Message handling error:', err);
+                setStatus('Failed to process message');
+                window.parent.postMessage({
+                    type: 'iframe-error',
+                    error: err.toString(),
+                    stack: err.stack
+                }, '*');
+            }
+        }
+
+        // Listen for postMessage
+        window.addEventListener('message', handleMessage);
+        
+        // Initial status
+        setStatus('Ready to receive app data...');
+        log('Zendesk App Runner ready');
     </script>
 </body>
 </html>
