@@ -426,7 +426,8 @@
 
                 for (const path of possiblePaths) {
                     if (vfs[path]) {
-                        return `${prefix}${quote}./vfs/${path}${quote}`;
+                        // Use absolute path for module specifier
+                        return `${prefix}${quote}/vfs/${path}${quote}`;
                     }
                 }
 
@@ -464,7 +465,8 @@
                     );
                     const blob = new Blob([transpiledCode], { type: 'application/javascript' });
                     const url = URL.createObjectURL(blob);
-                    imports[`./vfs/${file.filePath}`] = url;
+                    // Use absolute path in import map
+                    imports[`/vfs/${file.filePath}`] = url;
                 });
 
                 // Create and inject import map
@@ -478,8 +480,6 @@
                 const appWrapperCode = `
                     import { createRoot } from "react-dom/client";
                     import React from "react";
-                    ${mockFile ? `import "./vfs/${mockFile.filePath}";` : ''}
-                    import App from "./vfs/${entryFile.filePath}";
 
                     class ErrorBoundary extends React.Component {
                         constructor(props) {
@@ -531,17 +531,39 @@
                         }
                     }
 
-                    const AppWithErrorBoundary = () => React.createElement(ErrorBoundary, {}, React.createElement(App, {}));
-
-                    try {
-                        createRoot(document.getElementById('root')).render(React.createElement(AppWithErrorBoundary, {}));
-                    } catch (error) {
-                        console.log({error});
-                        window.parent.postMessage({
-                            type: 'iframe-error',
-                            error: error.toString(),
-                        }, '*');
-                    }
+                    // Dynamically import the app files after they've been registered
+                    const loadApp = async () => {
+                        try {
+                            // Load mock if available
+                            ${mockFile ? `await import("/vfs/${mockFile.filePath}");` : ''}
+                            
+                            // Import the app module dynamically
+                            const AppModule = await import("/vfs/${entryFile.filePath}");
+                            const App = AppModule.default;
+                            
+                            // Create the app with error boundary
+                            const AppWithErrorBoundary = () => React.createElement(
+                                ErrorBoundary, 
+                                {}, 
+                                React.createElement(App, {})
+                            );
+                            
+                            createRoot(document.getElementById('root')).render(
+                                React.createElement(AppWithErrorBoundary, {})
+                            );
+                        } catch (error) {
+                            console.error("Failed to load app:", error);
+                            window.parent.postMessage({
+                                type: 'iframe-error',
+                                error: error.toString(),
+                                stack: error.stack
+                            }, '*');
+                        }
+                    };
+                    
+                    // Load the app
+                    loadApp();
+                    
                 `;
 
                 // Create and execute the app module
