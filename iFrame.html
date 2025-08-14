@@ -238,12 +238,7 @@
     </div>
 
     <!-- Main app container -->
-    <div id="root">
-        <!-- Fallback content to verify the root element is accessible -->
-        <div id="app-loading" style="padding: 20px; text-align: center;">
-            <p>Initializing app...</p>
-        </div>
-    </div>
+    <div id="root"></div>
 
     <!-- ZAF Client Initialization -->
     <script type="text/javascript">
@@ -543,85 +538,21 @@
                             ${mockFile ? `await import("/vfs/${mockFile.filePath}");` : ''}
                             
                             // Import the app module dynamically
-                            console.log("Loading app module:", "/vfs/${entryFile.filePath}");
                             const AppModule = await import("/vfs/${entryFile.filePath}");
-                            console.log("App module loaded:", AppModule);
-                            
-                            // Check if we have a default export
                             const App = AppModule.default;
-                            if (!App) {
-                                console.error("No default export found in App module:", AppModule);
-                                // Try to find any component-like export
-                                const possibleApp = Object.values(AppModule).find(
-                                    v => typeof v === 'function' && v.toString().includes('React')
-                                );
-                                
-                                if (possibleApp) {
-                                    console.log("Found possible App component:", possibleApp);
-                                    // Render the possible app component directly
-                                    const rootElement = document.getElementById('root');
-                                    console.log("Root element:", rootElement);
-                                    
-                                    // Add a fallback element to show at least something is working
-                                    rootElement.innerHTML = '<div id="app-placeholder" style="padding: 20px;">Loading app...</div>';
-                                    
-                                    // Try to render with the found component
-                                    try {
-                                        createRoot(rootElement).render(React.createElement(
-                                            ErrorBoundary, 
-                                            {}, 
-                                            React.createElement(possibleApp, {})
-                                        ));
-                                        console.log("Rendered with possible App component");
-                                    } catch (err) {
-                                        console.error("Failed to render possible App component:", err);
-                                    }
-                                    return;
-                                }
-                                
-                                throw new Error("No valid App component found");
-                            }
                             
                             // Create the app with error boundary
-                            console.log("Creating app with error boundary");
-                            const AppWithErrorBoundary = () => {
-                                console.log("Rendering AppWithErrorBoundary");
-                                return React.createElement(
-                                    ErrorBoundary, 
-                                    {}, 
-                                    React.createElement(App, {})
-                                );
-                            };
-                            
-                            // Verify root element
-                            const rootElement = document.getElementById('root');
-                            console.log("Root element for rendering:", rootElement);
-                            
-                            // Render the app
-                            console.log("Creating root and rendering app");
-                            createRoot(rootElement).render(
-                                React.createElement(AppWithErrorBoundary, {})
+                            const AppWithErrorBoundary = () => React.createElement(
+                                ErrorBoundary, 
+                                {}, 
+                                React.createElement(App, {})
                             );
                             
-                            console.log("App rendered successfully");
+                            createRoot(document.getElementById('root')).render(
+                                React.createElement(AppWithErrorBoundary, {})
+                            );
                         } catch (error) {
                             console.error("Failed to load app:", error);
-                            
-                            // Display error in the root element
-                            const rootElement = document.getElementById('root');
-                            if (rootElement) {
-                                rootElement.innerHTML = `
-                                    <div style="padding: 20px; color: #d93f4c; text-align: left;">
-                                        <h3>Failed to load app</h3>
-                                        <pre style="background: #f8f9f9; padding: 15px; border-radius: 4px; overflow: auto;">${error.toString()}${error.stack ? '\n\n' + error.stack : ''}</pre>
-                                    </div>
-                                `;
-                            }
-                            
-                            // Show debugging info for module resolution
-                            console.log("Debug - Available import map entries:", Object.keys(imports));
-                            console.log("Debug - Check file existence:", !!vfs[entryFile.filePath]);
-                            
                             window.parent.postMessage({
                                 type: 'iframe-error',
                                 error: error.toString(),
@@ -631,40 +562,7 @@
                     };
                     
                     // Load the app
-                    loadApp().catch(error => {
-                        console.error("Top-level app loading error:", error);
-                        
-                        // Fallback to direct rendering without modules
-                        try {
-                            // Access files directly from vfs
-                            const indexContent = vfs["${entryFile.filePath}"];
-                            if (indexContent) {
-                                console.log("Trying direct execution fallback");
-                                // Create a simple React component that will display something
-                                const FallbackApp = () => {
-                                    return React.createElement('div', {
-                                        style: {
-                                            padding: '20px',
-                                            fontFamily: 'system-ui, sans-serif',
-                                        }
-                                    }, [
-                                        React.createElement('h3', null, 'App Preview'),
-                                        React.createElement('p', null, 'Module loading failed. Showing simplified preview.'),
-                                        React.createElement('div', {
-                                            style: { marginTop: '20px' }
-                                        }, 'Content would render here.')
-                                    ]);
-                                };
-                                
-                                // Render the fallback app
-                                createRoot(document.getElementById('root')).render(
-                                    React.createElement(FallbackApp, null)
-                                );
-                            }
-                        } catch (fallbackError) {
-                            console.error("Fallback rendering also failed:", fallbackError);
-                        }
-                    });
+                    loadApp();
                     
                 `;
 
