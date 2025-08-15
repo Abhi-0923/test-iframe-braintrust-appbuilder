@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zendesk Agent Info App</title>
+    <title>React Hello World - CDN</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -19,23 +19,9 @@
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
-        .load-button {
-            background: #1f73b7;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-            margin-bottom: 20px;
-        }
-        .load-button:hover {
-            background: #155a8a;
-        }
     </style>
 </head>
 <body>
-    <button class="load-button" onclick="loadApp()">Load Zendesk Agent App</button>
     <div id="root"></div>
 
     <!-- React CDN -->
@@ -45,216 +31,8 @@
     <!-- Babel Standalone for JSX transformation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.22.5/babel.min.js"></script>
 
-    <!-- Zendesk Garden Components (simplified versions) -->
-    <script>
-        // Mock Zendesk Garden components
-        window.ZendeskGarden = {
-            ThemeProvider: ({ children }) => React.createElement('div', { className: 'theme-provider' }, children),
-            Grid: {
-                Row: ({ children, alignItems }) => React.createElement('div', { 
-                    className: 'grid-row',
-                    style: { 
-                        display: 'flex',
-                        alignItems: alignItems || 'stretch',
-                        marginBottom: '8px'
-                    }
-                }, children),
-                Col: ({ children, xs }) => React.createElement('div', {
-                    className: 'grid-col',
-                    style: {
-                        flex: xs ? `0 0 ${(xs/12)*100}%` : '1',
-                        padding: '0 8px'
-                    }
-                }, children)
-            },
-            Typography: {
-                LG: ({ children }) => React.createElement('h2', { 
-                    style: { 
-                        fontSize: '20px', 
-                        margin: '0 0 8px 0',
-                        fontWeight: '600'
-                    }
-                }, children),
-                MD: ({ children }) => React.createElement('h3', { 
-                    style: { 
-                        fontSize: '16px', 
-                        margin: '0 0 4px 0',
-                        fontWeight: '500'
-                    }
-                }, children),
-                Paragraph: ({ children }) => React.createElement('p', { 
-                    style: { 
-                        fontSize: '14px', 
-                        margin: '0',
-                        lineHeight: '1.4'
-                    }
-                }, children)
-            }
-        };
-
-        // Make components available globally
-        window.ThemeProvider = ZendeskGarden.ThemeProvider;
-        window.Grid = ZendeskGarden.Grid;
-        window.LG = ZendeskGarden.Typography.LG;
-        window.MD = ZendeskGarden.Typography.MD;
-        window.Paragraph = ZendeskGarden.Typography.Paragraph;
-    </script>
-
     <!-- Your React App -->
     <script type="text/babel">
-        // Data from your JSON
-        const appData = {
-            "type": "data",
-            "data": {
-               "output": [
-                    {
-                        "args": {
-                            "fileContent": "const { useState } = React;\nimport SomeComponent from './components/someComponent';\nimport './styles/styles.js';\n\nfunction HelloWorld() {\n    const [count, setCount] = useState(0);\n\n    return (\n        <div>\n            <h1>Hello World from React!</h1>\n            <p>This React app is running from CDN without any build process.</p>\n            <SomeComponent count={count} />\n            <div style={{ marginTop: '20px' }}>\n                <button \n                    onClick={() => setCount(count + 1)}\n                    className=\"click-button\"\n                >\n                    Clicked {count} times\n                </button>\n            </div>\n            <div style={{ marginTop: '20px', color: '#666' }}>\n                <small>React {React.version} loaded from CDN</small>\n            </div>\n        </div>\n    );\n}",
-                            "filePath": "index.jsx",
-                            "operation": "add"
-                        },
-                        "toolCallId": "toolu_bdrk_01GecPhV165SBq636UvxTquA",
-                        "toolName": "updateCode",
-                        "type": "tool-call"
-                    },
-                    {
-                        "args": {
-                            "fileContent": "/* Styles for the React app */\n.click-button {\n    padding: 10px 20px;\n    font-size: 16px;\n    background-color: #61dafb;\n    border: none;\n    border-radius: 4px;\n    cursor: pointer;\n    transition: background-color 0.2s;\n}\n\n.click-button:hover {\n    background-color: #21a9c7;\n}\n\n.component-container {\n    padding: 16px;\n    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;\n    background-color: #f8f9fa;\n    border-radius: 8px;\n    margin: 10px 0;\n}\n\n.component-title {\n    color: #333;\n    margin: 0 0 8px 0;\n    font-size: 18px;\n}",
-                            "filePath": "styles/styles.js",
-                            "operation": "add"
-                        },
-                        "toolCallId": "toolu_bdrk_01GecPhV165SBq636UvxTquA",
-                        "toolName": "updateCode",
-                        "type": "tool-call"
-                    },
-                    {
-                        "args": {
-                            "fileContent": "function SomeComponent({ count }) {\n    return (\n        <div className=\"component-container\">\n            <h3 className=\"component-title\">Some Component</h3>\n            <p>This is a separate component that receives count: <strong>{count}</strong></p>\n            <p>Component loaded from components/someComponent.jsx</p>\n        </div>\n    );\n}\n\n// Export for use in other files\nwindow.SomeComponent = SomeComponent;",
-                            "filePath": "components/someComponent.jsx",
-                            "operation": "add"
-                        },
-                        "toolCallId": "toolu_bdrk_01GecPhV165SBq636UvxTquA",
-                        "toolName": "updateCode",
-                        "type": "tool-call"
-                    }
-                ]
-            }
-        };
-
-        // Styled components replacement (simplified)
-        window.styled = {
-            div: (styles) => ({ children, ...props }) => {
-                const styleObj = {};
-                // Convert template literal styles to style object
-                const styleStr = typeof styles === 'function' ? styles(props) : styles.join('');
-                return React.createElement('div', {
-                    style: styleObj,
-                    className: 'styled-component',
-                    ...props
-                }, children);
-            }
-        };
-
-        // Mock styled components with inline styles
-        window.AppContainer = ({ children }) => React.createElement('div', {
-            style: { padding: '16px', minHeight: '550px' }
-        }, children);
-
-        window.LoadingContainer = ({ children }) => React.createElement('div', {
-            style: {
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                height: '200px',
-                padding: '16px'
-            }
-        }, children);
-
-        window.ErrorContainer = ({ children }) => React.createElement('div', {
-            style: {
-                padding: '16px',
-                textAlign: 'center',
-                color: '#d93f4c'
-            }
-        }, children);
-
-        window.AgentCard = ({ children }) => React.createElement('div', {
-            style: {
-                background: '#ffffff',
-                border: '1px solid #d8dcde',
-                borderRadius: '4px',
-                padding: '0',
-                marginBottom: '16px'
-            }
-        }, children);
-
-        window.AgentHeader = ({ children }) => React.createElement('div', {
-            style: {
-                padding: '16px',
-                borderBottom: '1px solid #d8dcde',
-                background: '#f8f9fa'
-            }
-        }, children);
-
-        window.AgentAvatar = ({ src, alt }) => React.createElement('img', {
-            src,
-            alt,
-            style: {
-                width: '48px',
-                height: '48px',
-                borderRadius: '50%',
-                objectFit: 'cover'
-            }
-        });
-
-        window.AgentDetails = ({ children }) => React.createElement('div', {
-            style: { padding: '16px' }
-        }, children);
-
-        window.InfoRow = ({ children }) => React.createElement('div', {
-            style: {
-                display: 'flex',
-                marginBottom: '12px',
-                alignItems: 'flex-start'
-            }
-        }, children);
-
-        window.InfoLabel = ({ children }) => React.createElement('div', {
-            style: {
-                minWidth: '100px',
-                fontWeight: '600',
-                color: '#68737d',
-                marginRight: '12px',
-                flexShrink: '0'
-            }
-        }, children);
-
-        window.InfoValue = ({ children }) => React.createElement('div', {
-            style: {
-                flex: '1',
-                wordBreak: 'break-word'
-            }
-        }, children);
-
-        window.TagContainer = ({ children }) => React.createElement('div', {
-            style: {
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: '4px'
-            }
-        }, children);
-
-        window.Tag = ({ children }) => React.createElement('div', {
-            style: {
-                background: '#edf7ff',
-                border: '1px solid #1f73b7',
-                borderRadius: '12px',
-                padding: '2px 8px',
-                fontSize: '12px',
-                color: '#1f73b7'
-            }
-        }, children);
-
         function handleMessage(event) {
             const files = event.data.data?.output;
             
@@ -272,21 +50,20 @@
                 // Dynamically process all files based on their extensions and paths
                 console.log("Processing files:", outputFiles.map(f => f.args.filePath));
                 
-                // First, load any JavaScript utility/mock files
-                const jsFiles = outputFiles.filter(file => 
-                    file.args.filePath.endsWith('.js') && 
-                    !file.args.filePath.includes('styles') &&
-                    !file.args.filePath.endsWith('.jsx')
+                // First, load and apply all CSS/styles files
+                const styleFiles = outputFiles.filter(file => 
+                    file.args.filePath.includes('styles') || 
+                    file.args.filePath.endsWith('.css') || 
+                    file.args.filePath.includes('styles.js')
                 );
                 
-                jsFiles.forEach(jsFile => {
-                    console.log(`Loading JavaScript file: ${jsFile.args.filePath}`);
-                    try {
-                        window.eval(jsFile.args.fileContent);
-                        console.log(`JavaScript file loaded successfully: ${jsFile.args.filePath}`);
-                    } catch (error) {
-                        console.error(`Error loading JavaScript file ${jsFile.args.filePath}:`, error);
-                    }
+                styleFiles.forEach(styleFile => {
+                    console.log(`Loading styles from: ${styleFile.args.filePath}`);
+                    // Create a style element and append CSS
+                    const styleElement = document.createElement('style');
+                    styleElement.textContent = styleFile.args.fileContent;
+                    document.head.appendChild(styleElement);
+                    console.log(`Styles loaded successfully from: ${styleFile.args.filePath}`);
                 });
                 
                 // Second, load and execute all component files (excluding index.jsx)
@@ -300,14 +77,8 @@
                     const componentCode = componentFile.args.fileContent;
                     
                     // Remove any import statements from component files
-                    let cleanComponentCode = componentCode.replace(/import\s+[\s\S]*?from\s+['"`][^'"`]*['"`]\s*;?/g, '');
-                    cleanComponentCode = cleanComponentCode.replace(/import\s+['"`][^'"`]*['"`]\s*;?/g, '');
-                    
-                    // Remove export statements and make components globally available
-                    cleanComponentCode = cleanComponentCode.replace(/export\s+(const|function|default)\s*/g, '');
-                    
-                    // For named exports like "export const ComponentName", make them global
-                    cleanComponentCode = cleanComponentCode.replace(/^const\s+(\w+)\s*=/gm, 'window.$1 =');
+                    let cleanComponentCode = componentCode.replace(/import\s+.*?from\s+.*?;?\s*/g, '');
+                    cleanComponentCode = cleanComponentCode.replace(/import\s+.*?;?\s*/g, '');
                     
                     const transformedComponentCode = Babel.transform(cleanComponentCode, { 
                         presets: ['react'] 
@@ -329,10 +100,6 @@
                     mainCode = mainCode.replace(/import\s+.*?from\s+.*?;?\s*/g, '');
                     mainCode = mainCode.replace(/import\s+.*?;?\s*/g, '');
                     
-                    // Remove export statements and make the App component global
-                    mainCode = mainCode.replace(/export\s+default\s+(\w+);?/g, 'window.$1 = $1;');
-                    mainCode = mainCode.replace(/export\s+default\s*/g, '');
-                    
                     console.log("Main app code after import removal:", mainCode);
                     
                     const transformedMainCode = Babel.transform(mainCode, { 
@@ -347,13 +114,15 @@
                     // Mount the React app - find the main component dynamically
                     const root = ReactDOM.createRoot(document.getElementById('root'));
                     
-                    // Try to find and render the main component (typically App or HelloWorld)
-                    if (window.App) {
-                        root.render(React.createElement(window.App));
-                    } else if (window.HelloWorld) {
+                    // Try to find and render the main component (typically HelloWorld or App)
+                    if (window.HelloWorld) {
+                        console.log("Rendering HelloWorld component");
                         root.render(React.createElement(window.HelloWorld));
+                    } else if (window.App) {
+                        console.log("Rendering App component");
+                        root.render(React.createElement(window.App));
                     } else {
-                        console.error("No main component found (App or HelloWorld)");
+                        console.error("No main component found (HelloWorld or App)");
                     }
                     
                     console.log("App mounted successfully");
@@ -368,17 +137,8 @@
 
         // Listen for messages containing file data
         window.addEventListener('message', handleMessage);
-
-        // Function to load the app using the embedded data
-        function loadApp() {
-            console.log("Loading app with embedded data...");
-            handleMessage({ data: appData });
-        }
-
-        // Make loadApp available globally
-        window.loadApp = loadApp;
         
-        console.log("Ready! Click the button to load the Zendesk Agent App");
+        console.log("Message listener registered. Send data via window.postMessage()");
     </script>
 </body>
 </html>

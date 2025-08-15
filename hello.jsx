@@ -1,2 +1,27 @@
-const { useState } = React;\n\nfunction HelloWorld() {\n    const [count, setCount] = useState(0);\n\n    return (\n        <div>\n            <h1>Hello World from React!</h1>\n            <p>This React app is running from CDN without any build process.</p>\n            <div style={{ marginTop: '20px' }}>\n                <button \n                    onClick={() => setCount(count + 1)}\n                    style={{\n                        padding: '10px 20px',\n                        fontSize: '16px',\n                        backgroundColor: '#61dafb',\n                        border: 'none',\n                        borderRadius: '4px',\n                        cursor: 'pointer'\n                    }}\n                >\n                    Clicked {count} times\n                </button>\n            </div>\n            <div style={{ marginTop: '20px', color: '#666' }}>\n                <small>React {React.version} loaded from CDN</small>\n            </div>\n        </div>\n    );\n}",
-                            
+const { useState } = React;
+import SomeComponent from './components/someComponent'
+import './styles/styles.js'; 
+const HelloWorld = () => {
+    const [count, setCount] = useState(0);
+
+    return (
+        <div>
+            <h1>Hello World from React!</h1>
+            <p>This React app is running from CDN without any build process.</p>
+            <SomeComponent count={count} />
+            <div style={{ marginTop: '20px' }}>
+                <button 
+                    onClick={() => setCount(count + 1)}
+                    className="click-button"
+                >
+                    Clicked {count} times
+                </button>
+            </div>
+            <div style={{ marginTop: '20px', color: '#666' }}>
+                <small>React {React.version} loaded from CDN</small>
+            </div>
+        </div>
+    );
+}
+
+export default HelloWorld;
