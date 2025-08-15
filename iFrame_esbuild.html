@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>React App - Braintrust AppBuilder Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        #root {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #555;
+            font-size: 16px;
+        }
+        .error {
+            color: #d93f4c;
+            padding: 20px;
+            border: 1px solid #f5c6cb;
+            border-radius: 4px;
+            background-color: #f8d7da;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root">
+        <div class="loading">Loading application...</div>
+    </div>
+
+    <!-- React CDN -->
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+    
+    <!-- esbuild-wasm for bundling -->
+    <script src="https://unpkg.com/esbuild-wasm@0.17.19/lib/browser.min.js"></script>
+
+    <!-- Your React App -->
+    <script>
+    const data = {
+        "type": "data",
+        "data": {
+            "_pagination_key": "p07535305238268870656",
+            "_xact_id": "1000195571892760302",
+            "created": "2025-08-06T03:12:46.914Z",
+            "id": "7fedaa20-c041-4bdc-943e-28b3904ea1dc",
+            "metadata": {},
+            "metrics": {
+                "end": 1754450069.843,
+                "start": 1754449966.914,
+                "prompt_tokens": 25922,
+                "completion_tokens": 1749,
+                "tokens": 27671,
+                "estimated_cost": 0.104001
+            },
+            "origin": null,
+            "root_span_id": "851a36c1-b43b-4f8f-8ad0-4133979e4cd2",
+            "scores": null,
+            "span_attributes": {
+                "exec_counter": 0,
+                "name": "eval",
+                "type": "eval"
+            },
+            "span_id": "851a36c1-b43b-4f8f-8ad0-4133979e4cd2",
+            "tags": [],
+            "context": {},
+            "expected": "The currentUser value is retrieved using zafClient.get('currentUser')",
+            "experiment_id": "e6825aa8-a7f0-4501-8bea-e268e7d94436",
+            "input": "Create an app that displays current agent information",
+            "is_root": true,
+            "output": [
+                {
+                    "args": {
+                        "fileContent": "const { useState } = React;\nimport SomeComponent from './components/someComponent'\nimport './styles/styles.js'; \nconst App = () => {\n    const [count, setCount] = useState(0);\n\n    return (\n        <div>\n            <h1>Hello World from React!</h1>\n            <p>This React app is running from CDN without any build process.</p>\n            <SomeComponent count={count} />\n            <div style={{ marginTop: '20px' }}>\n                <button \n                    onClick={() => setCount(count + 1)}\n                    className=\"click-button\"\n                >\n                    Clicked {count} times\n                </button>\n            </div>\n            <div style={{ marginTop: '20px', color: '#666' }}>\n                <small>React {React.version} loaded from CDN</small>\n            </div>\n        </div>\n    );\n}\n\nexport default App;",
+                        "filePath": "index.jsx",
+                        "operation": "add"
+                    },
+                    "toolCallId": "toolu_bdrk_01GecPhV165SBq636UvxTquA",
+                    "toolName": "updateCode",
+                    "type": "tool-call"
+                },
+                {
+                    "args": {
+                        "fileContent": "/* Styles for the React app */\n.click-button {\n    padding: 10px 20px;\n    font-size: 16px;\n    background-color: #61dafb;\n    border: none;\n    border-radius: 4px;\n    cursor: pointer;\n    transition: background-color 0.2s;\n}\n\n.click-button:hover {\n    background-color: #21a9c7;\n}\n\n.component-container {\n    padding: 16px;\n    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;\n    background-color: #f8f9fa;\n    border-radius: 8px;\n    margin: 10px 0;\n}\n\n.component-title {\n    color: #333;\n    margin: 0 0 8px 0;\n    font-size: 18px;\n}",
+                        "filePath": "styles/styles.js",
+                        "operation": "add"
+                    },
+                    "toolCallId": "toolu_bdrk_01GecPhV165SBq636UvxTquA",
+                    "toolName": "updateCode",
+                    "type": "tool-call"
+                },
+                {
+                    "args": {
+                        "fileContent": "function SomeComponent({ count }) {\n    return (\n        <div className=\"component-container\">\n            <h3 className=\"component-title\">Some Component</h3>\n            <p>This is a separate component that receives count: <strong>{count}</strong></p>\n            <p>Component loaded from components/someComponent.jsx</p>\n        </div>\n    );\n}\n\nexport default SomeComponent;",
+                        "filePath": "components/someComponent.jsx",
+                        "operation": "add"
+                    },
+                    "toolCallId": "toolu_bdrk_01GecPhV165SBq636UvxTquA",
+                    "toolName": "updateCode",
+                    "type": "tool-call"
+                }
+            ]
+        }
+    };
+
+    // Main function to initialize esbuild and bundle the app
+    async function initializeAndBundleApp() {
+        try {
+            // Get files from the data structure
+            const outputFiles = data.data.output;
+            console.log("Processing files:", outputFiles.map(f => f.args.filePath));
+
+            // Initialize esbuild-wasm
+            console.log("Initializing esbuild...");
+            await esbuild.initialize({
+                wasmURL: 'https://unpkg.com/esbuild-wasm@0.17.19/esbuild.wasm',
+                worker: true
+            });
+            console.log("esbuild initialized successfully");
+
+            // 1) First, load and apply all CSS/styles files
+            const styleFiles = outputFiles.filter(file => 
+                file.args.filePath.includes('styles') || 
+                file.args.filePath.endsWith('.css') || 
+                file.args.filePath.includes('styles.js')
+            );
+            
+            console.log('Style files found:', styleFiles.map(f => f.args.filePath));
+            console.log('Style file content sample:', styleFiles[0]?.args.fileContent?.substring(0, 100));
+            
+            styleFiles.forEach(styleFile => {
+                console.log(`Loading styles from: ${styleFile.args.filePath}`);
+                const styleElement = document.createElement('style');
+                styleElement.textContent = styleFile.args.fileContent;
+                document.head.appendChild(styleElement);
+                console.log(`Styles loaded successfully from: ${styleFile.args.filePath}`);
+            });
+            
+            // 2) Create a virtual file system from all the JS/JSX files (not CSS)
+            const jsxFiles = outputFiles.filter(file => 
+                file.args.filePath.endsWith('.jsx') || 
+                (file.args.filePath.endsWith('.js') && !file.args.filePath.includes('styles.js'))
+            );
+            
+            // Create a map of files for our virtual file system
+            const virtualFileSystem = {};
+            jsxFiles.forEach(file => {
+                // Modify the SomeComponent export to not use window
+                if (file.args.filePath.includes('someComponent.jsx')) {
+                    const content = file.args.fileContent.replace(
+                        "// Export for use in other files\nwindow.SomeComponent = SomeComponent;", 
+                        "export default SomeComponent;"
+                    );
+                    virtualFileSystem[file.args.filePath] = content;
+                } else {
+                    virtualFileSystem[file.args.filePath] = file.args.fileContent;
+                }
+            });
+            
+            console.log("Virtual file system created with files:", Object.keys(virtualFileSystem));
+            
+            // Find the entry point (index.jsx)
+            const entryPoint = jsxFiles.find(file => file.args.filePath.endsWith('index.jsx'))?.args.filePath;
+            
+            if (!entryPoint) {
+                throw new Error("No index.jsx entry point found");
+            }
+            
+            console.log(`Using entry point: ${entryPoint}`);
+            
+            // Create a plugin to resolve imports from our virtual file system
+            const virtualFsPlugin = {
+                name: 'virtual-fs',
+                setup(build) {
+                    // Handle all file resolution
+                    build.onResolve({ filter: /.*/ }, args => {
+                        if (args.kind === 'entry-point') {
+                            return { path: args.path, namespace: 'virtual-fs' };
+                        }
+                        
+                        // Handle relative imports
+                        if (args.path.startsWith('./') || args.path.startsWith('../')) {
+                            let normalizedPath = args.path;
+                            let resolveDir = args.resolveDir || '';
+                            
+                            // Remove ./ from the beginning
+                            if (normalizedPath.startsWith('./')) {
+                                normalizedPath = normalizedPath.substring(2);
+                            }
+                            
+                            // Construct the full path
+                            const basePath = resolveDir ? `${resolveDir}/` : '';
+                            const fullPath = `${basePath}${normalizedPath}`;
+                            
+                            // Check if the file exists in our virtual file system
+                            const possiblePaths = [
+                                fullPath,
+                                `${fullPath}.jsx`,
+                                `${fullPath}.js`,
+                                // Handle CSS imports
+                                normalizedPath,
+                                `${normalizedPath}.js`
+                            ];
+                            
+                            for (const path of possiblePaths) {
+                                if (virtualFileSystem[path]) {
+                                    return { path, namespace: 'virtual-fs' };
+                                }
+                            }
+                            
+                            console.warn(`Could not resolve: ${args.path} from ${resolveDir}`);
+                        }
+                        
+                        // Pass through external dependencies (like React)
+                        return { path: args.path, external: true };
+                    });
+                    
+                    // Load files from virtual file system
+                    build.onLoad({ filter: /.*/, namespace: 'virtual-fs' }, args => {
+                        const fileContent = virtualFileSystem[args.path];
+                        
+                        if (fileContent) {
+                            // Determine loader based on file extension
+                            const loader = args.path.endsWith('.css') ? 'css' : 'jsx';
+                            const resolveDir = args.path.split('/').slice(0, -1).join('/');
+                            
+                            return { 
+                                contents: fileContent, 
+                                loader, 
+                                resolveDir 
+                            };
+                        }
+                        
+                        return null;
+                    });
+                }
+            };
+            
+            // Bundle the application
+            console.log("Starting bundle process...");
+            
+            // Handle CSS imports to prevent esbuild errors
+            try {
+                if (virtualFileSystem[entryPoint]) {
+                    console.log("Processing entry point for CSS imports");
+                    const indexContent = virtualFileSystem[entryPoint];
+                    
+                    // Replace any CSS/style imports with comments
+                    const modifiedContent = indexContent
+                        .replace(/import\s+['"]\.\/(styles|css)\/.*?['"];?\s*/g, '// CSS styles are loaded separately\n')
+                        .replace(/import\s+['"]\.\.\/styles\/.*?['"];?\s*/g, '// CSS styles are loaded separately\n');
+                    
+                    // Log what changed
+                    if (modifiedContent !== indexContent) {
+                        console.log("Removed CSS imports from entry point");
+                    } else {
+                        console.log("No CSS imports found in entry point");
+                    }
+                    
+                    virtualFileSystem[entryPoint] = modifiedContent;
+                }
+            } catch (err) {
+                console.warn("Error processing CSS imports:", err);
+                // Continue anyway - CSS is loaded separately
+            }
+
+            let result;
+            try {
+                result = await esbuild.build({
+                    entryPoints: [entryPoint],
+                    bundle: true,
+                    format: 'iife',  // Immediately Invoked Function Expression
+                    globalName: 'AppBundle',
+                    jsx: 'transform',
+                    jsxFactory: 'React.createElement',
+                    jsxFragment: 'React.Fragment',
+                    plugins: [virtualFsPlugin],
+                    define: {
+                        'process.env.NODE_ENV': '"development"',
+                        'React': 'window.React',
+                        'ReactDOM': 'window.ReactDOM'
+                    },
+                    external: ['*.css', '*.scss'],  // Don't try to bundle CSS files
+                    write: false, // Output to memory
+                    logLevel: 'info'
+                });
+            } catch (buildError) {
+                console.error("esbuild build failed:", buildError);
+                
+                // Try a simpler approach as fallback
+                console.log("Attempting fallback build without CSS imports...");
+                
+                // Additional cleanup of problematic imports in all files
+                Object.keys(virtualFileSystem).forEach(key => {
+                    virtualFileSystem[key] = virtualFileSystem[key].replace(
+                        /import\s+['"].*?\.(css|scss|less|styles)['"];?\s*/g,
+                        '// CSS import removed\n'
+                    );
+                });
+                
+                // Try again with the cleaned files
+                result = await esbuild.build({
+                    entryPoints: [entryPoint],
+                    bundle: true,
+                    format: 'iife',
+                    globalName: 'AppBundle',
+                    jsx: 'transform',
+                    jsxFactory: 'React.createElement',
+                    jsxFragment: 'React.Fragment',
+                    plugins: [virtualFsPlugin],
+                    define: {
+                        'process.env.NODE_ENV': '"development"',
+                        'React': 'window.React',
+                        'ReactDOM': 'window.ReactDOM'
+                    },
+                    external: ['*.css', '*.scss', '*.styles.js'],
+                    write: false
+                });
+            }
+            
+            console.log("Bundle completed successfully");
+            
+            if (result.errors.length > 0) {
+                console.error("Build errors:", result.errors);
+                throw new Error(`Build failed with ${result.errors.length} errors`);
+            }
+            
+            if (result.warnings.length > 0) {
+                console.warn("Build warnings:", result.warnings);
+            }
+            
+            // Execute the bundled code
+            const bundledCode = result.outputFiles[0].text;
+            console.log("Bundled code size:", bundledCode.length, "bytes");
+            
+            // Make React and ReactDOM available in the global scope
+            window.React = React;
+            window.ReactDOM = ReactDOM;
+            
+            // Execute the bundled code
+            try {
+                const scriptEl = document.createElement('script');
+                scriptEl.textContent = bundledCode;
+                document.body.appendChild(scriptEl);
+                
+                console.log("Bundled code executed");
+                
+                // Render the React app
+                const root = ReactDOM.createRoot(document.getElementById('root'));
+                
+                // Check for the component in different possible locations
+                if (window.AppBundle?.default) {
+                    console.log("Rendering AppBundle.default component");
+                    root.render(React.createElement(window.AppBundle.default));
+                } else if (typeof window.AppBundle === 'function') {
+                    console.log("Rendering AppBundle component as function");
+                    root.render(React.createElement(window.AppBundle));
+                } else if (window.App) {
+                    console.log("Rendering App component");
+                    root.render(React.createElement(window.App));
+                } else {
+                    // Look for any React component in the global namespace
+                    const components = Object.keys(window).filter(key => {
+                        return typeof window[key] === 'function' &&
+                               key !== 'React' &&
+                               key !== 'ReactDOM' &&
+                               !key.startsWith('_');
+                    });
+                    
+                    if (components.length > 0) {
+                        const componentName = components[0];
+                        console.log(`Found component ${componentName}. Rendering...`);
+                        root.render(React.createElement(window[componentName]));
+                    } else {
+                        throw new Error("No React component found to render");
+                    }
+                }
+                
+                console.log("App mounted successfully");
+                
+            } catch (error) {
+                console.error("Error executing bundle:", error);
+                throw error;
+            }
+            
+        } catch (error) {
+            console.error("Error during bundling or rendering:", error);
+            document.getElementById('root').innerHTML = `
+                <div class="error">
+                    <h3>Error in Application</h3>
+                    <p>${error.message}</p>
+                    <pre style="background: #f8f9fa; padding: 10px; overflow: auto; max-height: 300px;">${error.stack}</pre>
+                </div>
+            `;
+        }
+    }
+    
+    // Start the bundling process
+    initializeAndBundleApp();
+    </script>
+</body>
+</html>

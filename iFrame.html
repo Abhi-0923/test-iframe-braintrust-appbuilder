@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>React Hello World - CDN</title>
+    <title>React App - Braintrust AppBuilder Demo</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -65,27 +65,45 @@
                     console.log(`Styles loaded successfully from: ${styleFile.args.filePath}`);
                 });
                 
-                // Simple function to process and execute component code
-                function executeComponent(code) {
-                    // Handle imports - replace them with appropriate variable declarations
-                    let processedCode = code;
+                // Process component code to make it compatible with browser evaluation
+                function processComponentCode(code) {
+                    // Remove import statements since we're not using a module system
+                    let processedCode = code.replace(/import\s+.*?from\s+.*?;?\s*/g, '');
+                    processedCode = processedCode.replace(/import\s+.*?;?\s*/g, '');
                     
-                    // Replace imports with variable declarations or remove them
-                    processedCode = processedCode.replace(/import\s+([\w]+)\s+from\s+['"][\.\w\/]+['"];?/g, '// Import removed: $1');
-                    processedCode = processedCode.replace(/import\s+\{([^}]*)\}\s+from\s+['"][\.\w\/]+['"];?/g, '// Import removed: {$1}');
-                    processedCode = processedCode.replace(/import\s+['"][\.\w\/]+['"];?/g, '// Import removed');
+                    // Handle different types of export default statements
                     
-                    // Handle export default by explicitly assigning to window
+                    // Case 1: export default ComponentName;
                     processedCode = processedCode.replace(/export\s+default\s+([\w]+);?/g, 'window.$1 = $1;');
                     
-                    // Handle arrow function exports
-                    processedCode = processedCode.replace(/export\s+default\s+(const|let|var)\s+([\w]+)\s+=\s+/g, '$1 $2 = window.$2 = ');
+                    // Case 2: export default function ComponentName() {...}
+                    const fnNameMatch = processedCode.match(/export\s+default\s+function\s+([\w]+)/);
+                    if (fnNameMatch) {
+                        const fnName = fnNameMatch[1];
+                        processedCode = processedCode.replace(/export\s+default\s+function\s+([\w]+)/g, 'function $1');
+                        processedCode += `\nwindow.${fnName} = ${fnName};`;
+                    }
                     
-                    // Handle function exports
-                    processedCode = processedCode.replace(/export\s+default\s+function\s+([\w]+)/g, 'function $1');
+                    // Case 3: export default const/let/var ComponentName = () => {...}
+                    const varNameMatch = processedCode.match(/export\s+default\s+(const|let|var)\s+([\w]+)\s*=/);
+                    if (varNameMatch) {
+                        const varName = varNameMatch[2];
+                        processedCode = processedCode.replace(/export\s+default\s+(const|let|var)\s+([\w]+)\s*=/, '$1 $2 =');
+                        processedCode += `\nwindow.${varName} = ${varName};`;
+                    }
                     
-                    // Add logging to help debug
-                    processedCode = processedCode + '\nconsole.log("Available components:", Object.keys(window).filter(k => typeof window[k] === "function" && k !== "eval"));';
+                    // Case 4: export default () => {...} (anonymous function)
+                    if (processedCode.includes('export default () =>')) {
+                        processedCode = processedCode.replace('export default () =>', 'window.AnonymousComponent = () =>');
+                    }
+                    
+                    // Case 5: export default class Component {...}
+                    const classNameMatch = processedCode.match(/export\s+default\s+class\s+([\w]+)/);
+                    if (classNameMatch) {
+                        const className = classNameMatch[1];
+                        processedCode = processedCode.replace(/export\s+default\s+class\s+([\w]+)/, 'class $1');
+                        processedCode += `\nwindow.${className} = ${className};`;
+                    }
                     
                     return processedCode;
                 }
@@ -102,7 +120,7 @@
                         const componentCode = componentFile.args.fileContent;
                         
                         // Process the component code
-                        const processedCode = executeComponent(componentCode);
+                        const processedCode = processComponentCode(componentCode);
                         
                         // Transform with Babel and execute
                         const transformedCode = Babel.transform(processedCode, { presets: ['react'] }).code;
@@ -129,11 +147,11 @@
                         const mainCode = indexFile.args.fileContent;
                         
                         // Process the code to handle exports and imports
-                        const processedCode = executeComponent(mainCode);
+                        const processedCode = processComponentCode(mainCode);
                         
                         // Transform with Babel
                         const transformedCode = Babel.transform(processedCode, { presets: ['react'] }).code;
-                        console.log(`Transformed main app code:`, transformedCode);
+                        console.log(`Processing completed for main app:`, processedCode);
                         
                         // Evaluate the code
                         window.eval(transformedCode);
@@ -144,17 +162,59 @@
                         // Mount the React app
                         const root = ReactDOM.createRoot(document.getElementById('root'));
                         
-                        // Look for the main component
-                        if (window.App) {
-                            console.log("Rendering App component");
-                            root.render(React.createElement(window.App));
-                            console.log("App mounted successfully");
-                        } else if (window.HelloWorld) {
-                            console.log("Rendering HelloWorld component");
-                            root.render(React.createElement(window.HelloWorld));
-                            console.log("HelloWorld mounted successfully");
+                        // Try to find the main component in different possible exports
+                        const possibleComponents = ['App', 'HelloWorld', 'Main', 'Component', 'AnonymousComponent'];
+                        const availableComponents = Object.keys(window).filter(k => 
+                            typeof window[k] === 'function' && 
+                            !k.startsWith('_') && 
+                            k !== 'eval' && 
+                            k !== 'fetch'
+                        );
+                        
+                        console.log('Available components in window:', availableComponents);
+                        
+                        // Find a component to render
+                        let componentToRender = null;
+                        
+                        // First check the specified list
+                        for (const componentName of possibleComponents) {
+                            if (window[componentName]) {
+                                componentToRender = window[componentName];
+                                console.log(`Found component to render: ${componentName}`);
+                                break;
+                            }
+                        }
+                        
+                        // If not found, try any available component as fallback
+                        if (!componentToRender && availableComponents.length > 0) {
+                            const componentName = availableComponents[0];
+                            componentToRender = window[componentName];
+                            console.log(`Using first available component: ${componentName}`);
+                        }
+                        
+                        if (componentToRender) {
+                            try {
+                                console.log(`Rendering component:`, componentToRender);
+                                root.render(React.createElement(componentToRender));
+                                console.log("App mounted successfully");
+                            } catch (error) {
+                                console.error("Error rendering component:", error);
+                                document.getElementById('root').innerHTML = `
+                                    <div style="padding: 20px; color: #d93f4c;">
+                                        <h3>Error rendering component</h3>
+                                        <p>${error.message}</p>
+                                        <pre style="background: #f8f9fa; padding: 10px;">${error.stack}</pre>
+                                    </div>
+                                `;
+                            }
                         } else {
-                            console.error("No App or HelloWorld component found in the global scope");
+                            console.error("No component found to render");
+                            document.getElementById('root').innerHTML = `
+                                <div style="padding: 20px; color: #d93f4c;">
+                                    <h3>No component found to render</h3>
+                                    <p>Make sure your main component is exported as "App", "HelloWorld", or using a default export.</p>
+                                </div>
+                            `;
                         }
                     } catch (error) {
                         console.error("Error loading main app:", error);
