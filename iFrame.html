@@ -28,7 +28,7 @@
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
     
-    <!-- Babel Standalone for JSX transformation -->
+    <!-- Babel Standalone for JSX transformation with modules support -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.22.5/babel.min.js"></script>
 
     <!-- Your React App -->
@@ -47,7 +47,6 @@
             const outputFiles = files.filter(file => !file.args.filePath.endsWith('.md'));
             
             try {
-                // Dynamically process all files based on their extensions and paths
                 console.log("Processing files:", outputFiles.map(f => f.args.filePath));
                 
                 // First, load and apply all CSS/styles files
@@ -66,25 +65,56 @@
                     console.log(`Styles loaded successfully from: ${styleFile.args.filePath}`);
                 });
                 
-                // Second, load and execute all component files (excluding index.jsx)
+                // Simple function to process and execute component code
+                function executeComponent(code) {
+                    // Handle imports - replace them with appropriate variable declarations
+                    let processedCode = code;
+                    
+                    // Replace imports with variable declarations or remove them
+                    processedCode = processedCode.replace(/import\s+([\w]+)\s+from\s+['"][\.\w\/]+['"];?/g, '// Import removed: $1');
+                    processedCode = processedCode.replace(/import\s+\{([^}]*)\}\s+from\s+['"][\.\w\/]+['"];?/g, '// Import removed: {$1}');
+                    processedCode = processedCode.replace(/import\s+['"][\.\w\/]+['"];?/g, '// Import removed');
+                    
+                    // Handle export default by explicitly assigning to window
+                    processedCode = processedCode.replace(/export\s+default\s+([\w]+);?/g, 'window.$1 = $1;');
+                    
+                    // Handle arrow function exports
+                    processedCode = processedCode.replace(/export\s+default\s+(const|let|var)\s+([\w]+)\s+=\s+/g, '$1 $2 = window.$2 = ');
+                    
+                    // Handle function exports
+                    processedCode = processedCode.replace(/export\s+default\s+function\s+([\w]+)/g, 'function $1');
+                    
+                    // Add logging to help debug
+                    processedCode = processedCode + '\nconsole.log("Available components:", Object.keys(window).filter(k => typeof window[k] === "function" && k !== "eval"));';
+                    
+                    return processedCode;
+                }
+                
+                // First pass: Transform and load all component files (excluding index.jsx)
                 const componentFiles = outputFiles.filter(file => 
                     file.args.filePath.endsWith('.jsx') && 
                     !file.args.filePath.endsWith('index.jsx')
                 );
                 
                 componentFiles.forEach(componentFile => {
-                    console.log(`Loading component from: ${componentFile.args.filePath}`);
-                    const componentCode = componentFile.args.fileContent;
-                    
-                    // Remove any import statements from component files
-                    let cleanComponentCode = componentCode.replace(/import\s+.*?from\s+.*?;?\s*/g, '');
-                    cleanComponentCode = cleanComponentCode.replace(/import\s+.*?;?\s*/g, '');
-                    
-                    const transformedComponentCode = Babel.transform(cleanComponentCode, { 
-                        presets: ['react'] 
-                    }).code;
-                    window.eval(transformedComponentCode);
-                    console.log(`Component loaded successfully from: ${componentFile.args.filePath}`);
+                    try {
+                        console.log(`Loading component from: ${componentFile.args.filePath}`);
+                        const componentCode = componentFile.args.fileContent;
+                        
+                        // Process the component code
+                        const processedCode = executeComponent(componentCode);
+                        
+                        // Transform with Babel and execute
+                        const transformedCode = Babel.transform(processedCode, { presets: ['react'] }).code;
+                        console.log(`Transformed component code for ${componentFile.args.filePath}:`, transformedCode);
+                        
+                        // Evaluate the code
+                        window.eval(transformedCode);
+                        
+                        console.log(`Component loaded successfully from: ${componentFile.args.filePath}`);
+                    } catch (error) {
+                        console.error(`Failed to load component from ${componentFile.args.filePath}:`, error);
+                    }
                 });
                 
                 // Finally, load and execute the main index file
@@ -93,39 +123,42 @@
                 );
                 
                 if (indexFile) {
-                    console.log(`Loading main app from: ${indexFile.args.filePath}`);
-                    let mainCode = indexFile.args.fileContent;
-                    
-                    // Remove ALL import statements since we're not using a module system
-                    mainCode = mainCode.replace(/import\s+.*?from\s+.*?;?\s*/g, '');
-                    mainCode = mainCode.replace(/import\s+.*?;?\s*/g, '');
-                    
-                    console.log("Main app code after import removal:", mainCode);
-                    
-                    const transformedMainCode = Babel.transform(mainCode, { 
-                        presets: ['react'] 
-                    }).code;
-                    
-                    console.log("Transformed main code:", transformedMainCode);
-                    
-                    window.eval(transformedMainCode);
-                    console.log("Main app loaded successfully");
-                    
-                    // Mount the React app - find the main component dynamically
-                    const root = ReactDOM.createRoot(document.getElementById('root'));
-                    
-                    // Try to find and render the main component (typically HelloWorld or App)
-                    if (window.HelloWorld) {
-                        console.log("Rendering HelloWorld component");
-                        root.render(React.createElement(window.HelloWorld));
-                    } else if (window.App) {
-                        console.log("Rendering App component");
-                        root.render(React.createElement(window.App));
-                    } else {
-                        console.error("No main component found (HelloWorld or App)");
+                    try {
+                        console.log(`Loading main app from: ${indexFile.args.filePath}`);
+                        // Get the main app code
+                        const mainCode = indexFile.args.fileContent;
+                        
+                        // Process the code to handle exports and imports
+                        const processedCode = executeComponent(mainCode);
+                        
+                        // Transform with Babel
+                        const transformedCode = Babel.transform(processedCode, { presets: ['react'] }).code;
+                        console.log(`Transformed main app code:`, transformedCode);
+                        
+                        // Evaluate the code
+                        window.eval(transformedCode);
+                        
+                        console.log("Main app loaded successfully");
+                        console.log("Available in window:", Object.keys(window).filter(k => typeof window[k] === "function" && k !== "eval" && !k.startsWith("_")));
+                        
+                        // Mount the React app
+                        const root = ReactDOM.createRoot(document.getElementById('root'));
+                        
+                        // Look for the main component
+                        if (window.App) {
+                            console.log("Rendering App component");
+                            root.render(React.createElement(window.App));
+                            console.log("App mounted successfully");
+                        } else if (window.HelloWorld) {
+                            console.log("Rendering HelloWorld component");
+                            root.render(React.createElement(window.HelloWorld));
+                            console.log("HelloWorld mounted successfully");
+                        } else {
+                            console.error("No App or HelloWorld component found in the global scope");
+                        }
+                    } catch (error) {
+                        console.error("Error loading main app:", error);
                     }
-                    
-                    console.log("App mounted successfully");
                 } else {
                     console.error("No index.jsx file found");
                 }
