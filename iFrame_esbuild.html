@@ -34,13 +34,6 @@
             margin-bottom: 20px;
         }
     </style>
-</head>
-<body>
-    <div id="root">
-        <div class="loading">Loading application...<div id="debug-info" style="color: #999; font-size: 12px; margin-top: 10px;"></div></div>
-    </div>
-
-    <!-- CDN Assets from CDN_ASSETS_MAPPING -->
     <script type="importmap">
     {
       "imports": {
@@ -67,6 +60,14 @@
       }
     }
     </script>
+</head>
+<body>
+    <div id="root">
+        <div class="loading">Loading application...<div id="debug-info" style="color: #999; font-size: 12px; margin-top: 10px;"></div></div>
+    </div>
+
+    <!-- CDN Assets from CDN_ASSETS_MAPPING -->
+
     <script type="module">
       import React from 'react';
       import ReactDOM from 'react-dom/client';
@@ -113,7 +114,7 @@
             "output": [
                 {
                     "args": {
-                        "fileContent": "const { useState } = React;\nimport SomeComponent from './components/someComponent'\nimport './styles/styles.js'; \nconst App = () => {\n    const [count, setCount] = useState(0);\n\n    return (\n        <div>\n            <h1>Hello World from React!</h1>\n            <p>This React app is running from CDN without any build process.</p>\n            <SomeComponent count={count} />\n            <div style={{ marginTop: '20px' }}>\n                <button \n                    onClick={() => setCount(count + 1)}\n                    className=\"click-button\"\n                >\n                    Clicked {count} times\n                </button>\n            </div>\n            <div style={{ marginTop: '20px', color: '#666' }}>\n                <small>React {React.version} loaded from CDN</small>\n            </div>\n        </div>\n    );\n}\n\nexport default App;",
+                        "fileContent": "const { useState } = React;\nimport SomeComponent from './components/someComponent'\nimport './styles/styles.js'; \nimport { Button } from '@zendeskgarden/react-buttons';\nimport { ThemeProvider } from '@zendeskgarden/react-theming';\n\nconst App = () => {\n    const [count, setCount] = useState(0);\n\n    return (\n        <ThemeProvider>\n            <div>\n                <h1>Hello World from React!</h1>\n                <p>This React app is running from CDN without any build process.</p>\n                <SomeComponent count={count} />\n                <div style={{ marginTop: '20px' }}>\n                    <Button \n                        onClick={() => setCount(count + 1)}\n                        isPrimary\n                    >\n                        Clicked {count} times\n                    </Button>\n                </div>\n                <div style={{ marginTop: '20px', color: '#666' }}>\n                    <small>React {React.version} loaded from CDN</small>\n                </div>\n            </div>\n        </ThemeProvider>\n    );\n}\n\nexport default App;",
                         "filePath": "index.jsx",
                         "operation": "add"
                     },
@@ -405,39 +406,67 @@
                 try {
                     const moduleScript = document.createElement('script');
                     moduleScript.type = 'module';
+                    // Reset the root element to make sure we see the loading state
+                    document.getElementById('root').innerHTML = '<div class="loading">Loading application... <div id="debug-info" style="color: #999; font-size: 12px; margin-top: 10px;">Starting to load components...</div></div>';
+                    
                     moduleScript.textContent = `
                         // Debug imports
                         console.log('Import map available:', Object.keys(Array.from(document.querySelectorAll('script[type="importmap"]')).map(s => JSON.parse(s.textContent).imports || {}).reduce((acc, imports) => ({ ...acc, ...imports }), {})));
                         
-                        import('${bundleUrl}')
-                            .then(module => {
-                                document.getElementById('debug-info').textContent = 'Module loaded, looking for App component...';
-                                console.log('Module loaded:', module);
-                                
-                                const App = module.default || module;
-                                console.log('App component:', App);
-                                
-                                if (typeof App !== 'function') {
-                                    document.getElementById('debug-info').textContent = 'Error: App is not a component function';
-                                    console.error('App is not a component function:', App);
-                                    return;
-                                }
-                                
-                                document.getElementById('debug-info').textContent = 'Found App, attempting to render...';
-                                const root = ReactDOM.createRoot(document.getElementById('root'));
-                                
-                                try {
-                                    root.render(React.createElement(App));
-                                    document.getElementById('debug-info').textContent = 'App rendered successfully';
-                                } catch(e) {
-                                    document.getElementById('debug-info').textContent = 'Error rendering: ' + e.message;
-                                    console.error('Render error:', e);
-                                }
+                        // Wait for Garden components to download before loading the app
+                        document.getElementById('debug-info').textContent = 'Waiting for Zendesk Garden components to load (5 seconds)...';
+                        
+                        // Pre-fetch Zendesk Garden Button to ensure it's downloaded
+                        console.log('Pre-fetching Garden Button component...');
+                        import('@zendeskgarden/react-buttons')
+                            .then(gardenButtons => {
+                                console.log('Successfully pre-fetched Zendesk Garden components:', gardenButtons);
                             })
-                            .catch(error => {
-                                document.getElementById('debug-info').textContent = 'Import error: ' + error.message;
-                                console.error('Import error:', error);
+                            .catch(err => {
+                                console.error('Error pre-fetching Garden components:', err);
                             });
+                        
+                        // Delay app loading to ensure Garden components are downloaded
+                        setTimeout(() => {
+                            document.getElementById('debug-info').textContent = 'Loading app after Garden components delay...';
+                            
+                            import('${bundleUrl}')
+                                .then(module => {
+                                    document.getElementById('debug-info').textContent = 'Module loaded, looking for App component...';
+                                    console.log('Module loaded:', module);
+                                    
+                                    const App = module.default || module;
+                                    console.log('App component:', App);
+                                    
+                                    if (typeof App !== 'function') {
+                                        document.getElementById('debug-info').textContent = 'Error: App is not a component function';
+                                        console.error('App is not a component function:', App);
+                                        return;
+                                    }
+                                    
+                                    document.getElementById('debug-info').textContent = 'Found App, attempting to render...';
+                                    const root = ReactDOM.createRoot(document.getElementById('root'));
+                                    
+                                    try {
+                                        console.log('About to render App');
+                                        root.render(React.createElement(App));
+                                        console.log('Render completed');
+                                        document.getElementById('debug-info').textContent = 'App rendered successfully';
+                                        // Force full reload of styles
+                                        document.getElementById('root').style.opacity = '0';
+                                        setTimeout(() => {
+                                            document.getElementById('root').style.opacity = '1';
+                                        }, 100);
+                                    } catch(e) {
+                                        document.getElementById('debug-info').textContent = 'Error rendering: ' + e.message;
+                                        console.error('Render error:', e);
+                                    }
+                                })
+                                .catch(error => {
+                                    document.getElementById('debug-info').textContent = 'Import error: ' + error.message;
+                                    console.error('Import error:', error);
+                                });
+                        }, 5000); // 5 second delay
                     `;
                     
                     // Add the module script to the document
