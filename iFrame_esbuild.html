@@ -75,77 +75,11 @@
       window.ReactDOM = ReactDOM;
     </script>
     
-    <!-- ZAF Client Script with Mock Data -->
-    <script>
-      // Mock ZAF Client implementation from mock.js
-      window.zafClient = {
-        get: function(path) {
-          return new Promise(function(resolve) {
-            if (path === 'currentUser') {
-              resolve({
-                currentUser: {
-                  id: 12345,
-                  name: 'John Smith',
-                  email: 'john.smith@company.com',
-                  role: 'agent',
-                  locale: 'en-US',
-                  alias: 'J. Smith',
-                  externalId: 'EXT-12345',
-                  avatarUrl: 'https://via.placeholder.com/48x48/1f73b7/ffffff?text=JS',
-                  timeZone: {
-                    name: 'America/New_York',
-                    translatedName: 'Eastern Time',
-                    ianaName: 'America/New_York',
-                    offset: -18000,
-                    formattedOffset: 'GMT-05:00'
-                  },
-                  groups: [
-                    { id: 1, name: 'Support Team' },
-                    { id: 2, name: 'Tier 1 Agents' }
-                  ],
-                  tags: ['experienced', 'technical', 'customer-focused'],
-                  details: 'Senior support agent with 3+ years experience',
-                  notes: 'Specializes in technical issues and escalations'
-                }
-              });
-            }
-            resolve({});
-          });
-        },
-        
-        set: function(path, value) {
-          return new Promise(function(resolve) {
-            resolve('success');
-          });
-        },
-        
-        request: function(options) {
-          return new Promise(function(resolve) {
-            resolve({});
-          });
-        },
-        
-        invoke: function(action, data) {
-          return new Promise(function(resolve) {
-            if (action === 'resize') {
-              console.log('App resized to:', data);
-            }
-            resolve('success');
-          });
-        }
-      };
-      
-      // Mock ZAF Client initialization function
-      window.ZAFClient = {
-        init: function() {
-          console.log('ZAFClient initialized with mock data');
-          return window.zafClient;
-        }
-      };
-    </script>
-    
     <!-- esbuild-wasm for bundling -->
     <script src="https://unpkg.com/esbuild-wasm@0.17.19/lib/browser.min.js"></script>
+    <script type="text/javascript" src="https://static.zdassets.com/zendesk_app_framework_sdk/2.0/zaf_sdk.min.js"></script>
+
+    <!-- ZAFClient init will be set after the data is loaded -->
 
     <!-- Your React App -->
     <script>
@@ -262,6 +196,30 @@
             // Get files from the data structure
             const outputFiles = data.data.output;
             console.log("Processing files:", outputFiles.map(f => f.args.filePath));
+            
+            // Initialize ZAF Client and mock data
+            try {
+                // Initialize ZAFClient
+                window.zafClient = ZAFClient.init();
+                
+                // Find and use the mock.js file
+                const mockFile = outputFiles.find(file => 
+                    file.args.filePath === 'mock.js' || 
+                    file.args.filePath.endsWith('/mock.js'));
+                if (mockFile) {
+                    console.log("Found mock.js file");
+                    const mockContent = mockFile.args.fileContent;
+                    // Create a new script element to evaluate the mock file
+                    const mockScript = document.createElement('script');
+                    mockScript.textContent = mockContent;
+                    document.head.appendChild(mockScript);
+                    console.log("Mock data loaded successfully");
+                } else {
+                    console.warn("Could not find mock.js file in outputFiles");
+                }
+            } catch (error) {
+                console.error("Error initializing ZAF client:", error);
+            }
 
             // Initialize esbuild-wasm
             console.log("Initializing esbuild...");
