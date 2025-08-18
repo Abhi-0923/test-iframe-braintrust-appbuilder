@@ -34,24 +34,58 @@
             margin-bottom: 20px;
         }
     </style>
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18",
+        "react-dom": "https://esm.sh/react-dom@18?external=react&standalone",
+        "react-dom/client": "https://esm.sh/react-dom@18/client?external=react&standalone",
+        "styled-components": "https://esm.sh/styled-components@6.x?external=react&standalone",
+        "pdfjs-dist": "https://esm.sh/pdfjs-dist@4.10.38?standalone",
+        "tesseract.js": "https://esm.sh/tesseract.js@6.0.0?standalone",
+        "@zendeskgarden/react-theming": "https://esm.sh/@zendeskgarden/react-theming@9.x?external=react,styled-components&standalone",
+        "@zendeskgarden/react-buttons": "https://esm.sh/@zendeskgarden/react-buttons@9.x?external=react,styled-components,@zendeskgarden/react-theming&standalone",
+        "@zendeskgarden/react-grid": "https://esm.sh/@zendeskgarden/react-grid@9.x?external=react,styled-components,@zendeskgarden/react-theming&standalone",
+        "@zendeskgarden/react-forms": "https://esm.sh/@zendeskgarden/react-forms@9.x?external=react,styled-components,@zendeskgarden/react-theming&standalone",
+        "@zendeskgarden/react-tables": "https://esm.sh/@zendeskgarden/react-tables@9.x?external=react,styled-components,@zendeskgarden/react-theming&standalone",
+        "@zendeskgarden/react-typography": "https://esm.sh/@zendeskgarden/react-typography@9.x?external=react,styled-components,@zendeskgarden/react-theming&standalone",
+        "@zendeskgarden/react-loaders": "https://esm.sh/@zendeskgarden/react-loaders@9.x?external=react,styled-components,@zendeskgarden/react-theming&standalone",
+        "@zendeskgarden/react-tags": "https://esm.sh/@zendeskgarden/react-tags@9.x?external=react,styled-components,@zendeskgarden/react-theming&standalone",
+        "@zendeskgarden/react-tabs": "https://esm.sh/@zendeskgarden/react-tabs@9.x?external=react,styled-components,@zendeskgarden/react-theming&standalone",
+        "@zendeskgarden/react-accordions": "https://esm.sh/@zendeskgarden/react-accordions@9.x?external=react,styled-components,@zendeskgarden/react-theming&standalone",
+        "@zendeskgarden/react-tooltips": "https://esm.sh/@zendeskgarden/react-tooltips@9.x?external=react,styled-components,@zendeskgarden/react-theming&standalone",
+        "@zendeskgarden/react-modals": "https://esm.sh/@zendeskgarden/react-modals@9.x?external=react,styled-components,@zendeskgarden/react-theming&standalone",
+        "@zendeskgarden/react-notifications": "https://esm.sh/@zendeskgarden/react-notifications@9.x?external=react,styled-components,@zendeskgarden/react-theming&standalone",
+        "@zendeskgarden/react-pagination": "https://esm.sh/@zendeskgarden/react-pagination@9.x?external=react,styled-components,@zendeskgarden/react-theming&standalone"
+      }
+    }
+    </script>
 </head>
 <body>
     <div id="root">
-        <div class="loading">Loading application...</div>
+        <div class="loading">Loading application...<div id="debug-info" style="color: #999; font-size: 12px; margin-top: 10px;"></div></div>
     </div>
 
-    <!-- React CDN -->
-    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
-    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+    <!-- CDN Assets from CDN_ASSETS_MAPPING -->
+
+    <script type="module">
+      import React from 'react';
+      import ReactDOM from 'react-dom/client';
+      window.React = React;
+      window.ReactDOM = ReactDOM;
+    </script>
     
     <!-- esbuild-wasm for bundling -->
     <script src="https://unpkg.com/esbuild-wasm@0.17.19/lib/browser.min.js"></script>
+    <script type="text/javascript" src="https://static.zdassets.com/zendesk_app_framework_sdk/2.0/zaf_sdk.min.js"></script>
 
     <!-- Your React App -->
     <script>
         // Listen for messages containing file data
         function handleMessage(event) {
-            const files = event.data.data?.output;
+            console.log("Message received:", event);
+            const receivedData = event.data;
+            const files = receivedData.data?.output;
             
             if (!files || !Array.isArray(files)) {
                 console.log("No valid files received in message");
@@ -77,6 +111,33 @@
         async function initializeAndBundleApp(outputFiles) {
             try {
                 console.log("Processing files:", outputFiles.map(f => f.args.filePath));
+                
+                // Initialize ZAF Client and mock data
+                try {
+                    console.log("Initializing ZAF client");
+                    // Initialize ZAFClient
+                    window.zafClient = ZAFClient.init();
+                    
+                    // Find and use the mock.js file
+                    const mockFile = outputFiles.find(file => 
+                        file.args.filePath === 'mock.js' || 
+                        file.args.filePath.endsWith('/mock.js'));
+                    
+                    console.log("** Inside Mock File Handling **");
+                    if (mockFile) {
+                        console.log("Found mock.js file");
+                        const mockContent = mockFile.args.fileContent;
+                        // Create a new script element to evaluate the mock file
+                        const mockScript = document.createElement('script');
+                        mockScript.textContent = mockContent;
+                        document.head.appendChild(mockScript);
+                        console.log("Mock data loaded successfully");
+                    } else {
+                        console.warn("Could not find mock.js file in outputFiles");
+                    }
+                } catch (error) {
+                    console.error("Error initializing ZAF client:", error);
+                }
 
                 // Initialize esbuild-wasm
                 console.log("Initializing esbuild...");
@@ -110,19 +171,21 @@
                     (file.args.filePath.endsWith('.js') && !file.args.filePath.includes('styles.js'))
                 );
                 
+                console.log('JSX files found:', jsxFiles.map(f => f.args.filePath));
+                jsxFiles.forEach(file => {
+                    console.log(`${file.args.filePath} content preview:`, file.args.fileContent.substring(0, 100));
+                });
+                
                 // Create a map of files for our virtual file system
                 const virtualFileSystem = {};
                 jsxFiles.forEach(file => {
-                    // Ensure proper exports
-                    if (file.args.filePath.includes('Component') || file.args.filePath.includes('component')) {
-                        const content = file.args.fileContent;
-                        // Ensure we have a proper export if using window assignment
-                        if (content.includes('window.') && !content.includes('export default')) {
-                            const componentName = file.args.filePath.split('/').pop().split('.')[0];
-                            virtualFileSystem[file.args.filePath] = `${content}\nexport default ${componentName};`;
-                        } else {
-                            virtualFileSystem[file.args.filePath] = content;
-                        }
+                    // Modify the SomeComponent export to not use window
+                    if (file.args.filePath.includes('someComponent.jsx')) {
+                        const content = file.args.fileContent.replace(
+                            "// Export for use in other files\nwindow.SomeComponent = SomeComponent;", 
+                            "export default SomeComponent;"
+                        );
+                        virtualFileSystem[file.args.filePath] = content;
                     } else {
                         virtualFileSystem[file.args.filePath] = file.args.fileContent;
                     }
@@ -131,14 +194,10 @@
                 console.log("Virtual file system created with files:", Object.keys(virtualFileSystem));
                 
                 // Find the entry point (index.jsx)
-                const entryPoint = jsxFiles.find(file => 
-                    file.args.filePath.endsWith('index.jsx') || 
-                    file.args.filePath.endsWith('App.jsx') || 
-                    file.args.filePath.endsWith('main.jsx')
-                )?.args.filePath;
+                const entryPoint = jsxFiles.find(file => file.args.filePath.endsWith('index.jsx'))?.args.filePath;
                 
                 if (!entryPoint) {
-                    throw new Error("No suitable entry point found (index.jsx, App.jsx, or main.jsx)");
+                    throw new Error("No index.jsx entry point found");
                 }
                 
                 console.log(`Using entry point: ${entryPoint}`);
@@ -241,21 +300,19 @@
 
                 let result;
                 try {
+                    console.log('Running initial build with format: esm');
                     result = await esbuild.build({
                         entryPoints: [entryPoint],
                         bundle: true,
-                        format: 'iife',  // Immediately Invoked Function Expression
-                        globalName: 'AppBundle',
+                        format: 'esm',  // ES modules format to work with import map
                         jsx: 'transform',
                         jsxFactory: 'React.createElement',
                         jsxFragment: 'React.Fragment',
                         plugins: [virtualFsPlugin],
                         define: {
-                            'process.env.NODE_ENV': '"development"',
-                            'React': 'window.React',
-                            'ReactDOM': 'window.ReactDOM'
+                            'process.env.NODE_ENV': '"development"'
                         },
-                        external: ['*.css', '*.scss'],  // Don't try to bundle CSS files
+                        external: ['*.css', '*.scss', 'react', 'react-dom', 'react-dom/client', 'styled-components', '@zendeskgarden/*'],  // Use CDN imports
                         write: false, // Output to memory
                         logLevel: 'info'
                     });
@@ -274,21 +331,19 @@
                     });
                     
                     // Try again with the cleaned files
+                    console.log('Running fallback build with format: esm');
                     result = await esbuild.build({
                         entryPoints: [entryPoint],
                         bundle: true,
-                        format: 'iife',
-                        globalName: 'AppBundle',
+                        format: 'esm',  // ES modules format to work with import map
                         jsx: 'transform',
                         jsxFactory: 'React.createElement',
                         jsxFragment: 'React.Fragment',
                         plugins: [virtualFsPlugin],
                         define: {
-                            'process.env.NODE_ENV': '"development"',
-                            'React': 'window.React',
-                            'ReactDOM': 'window.ReactDOM'
+                            'process.env.NODE_ENV': '"development"'
                         },
-                        external: ['*.css', '*.scss', '*.styles.js'],
+                        external: ['*.css', '*.scss', '*.styles.js', 'react', 'react-dom', 'react-dom/client', 'styled-components', '@zendeskgarden/*'],
                         write: false
                     });
                 }
@@ -308,51 +363,132 @@
                 const bundledCode = result.outputFiles[0].text;
                 console.log("Bundled code size:", bundledCode.length, "bytes");
                 
-                // Make React and ReactDOM available in the global scope
-                window.React = React;
-                window.ReactDOM = ReactDOM;
+                // Add error handlers to debug React rendering issues
+                window.addEventListener('error', function(event) {
+                    console.error('Global error caught:', event.error);
+                    const debugInfo = document.getElementById('debug-info');
+                    if (debugInfo) {
+                        debugInfo.textContent = 'Error: ' + (event.error?.message || event.message || 'Unknown error');
+                    }
+                });
+                
+                window.addEventListener('unhandledrejection', function(event) {
+                    console.error('Unhandled promise rejection:', event.reason);
+                    const debugInfo = document.getElementById('debug-info');
+                    if (debugInfo) {
+                        debugInfo.textContent = 'Promise error: ' + (event.reason?.message || 'Unknown promise error');
+                    }
+                });
                 
                 // Execute the bundled code
                 try {
-                    const scriptEl = document.createElement('script');
-                    scriptEl.textContent = bundledCode;
-                    document.body.appendChild(scriptEl);
+                    // Create a blob URL for the bundled code
+                    const bundleBlob = new Blob([bundledCode], { type: 'text/javascript' });
+                    const bundleUrl = URL.createObjectURL(bundleBlob);
                     
-                    console.log("Bundled code executed");
+                    console.log("Bundle URL created:", bundleUrl);
                     
-                    // Render the React app
-                    const root = ReactDOM.createRoot(document.getElementById('root'));
-                    
-                    // Check for the component in different possible locations
-                    if (window.AppBundle?.default) {
-                        console.log("Rendering AppBundle.default component");
-                        root.render(React.createElement(window.AppBundle.default));
-                    } else if (typeof window.AppBundle === 'function') {
-                        console.log("Rendering AppBundle component as function");
-                        root.render(React.createElement(window.AppBundle));
-                    } else if (window.App) {
-                        console.log("Rendering App component");
-                        root.render(React.createElement(window.App));
-                    } else {
-                        // Look for any React component in the global namespace
-                        const components = Object.keys(window).filter(key => {
-                            return typeof window[key] === 'function' &&
-                                key !== 'React' &&
-                                key !== 'ReactDOM' &&
-                                !key.startsWith('_');
-                        });
+                    // Create and execute module script to import the app
+                    try {
+                        const moduleScript = document.createElement('script');
+                        moduleScript.type = 'module';
+                        // Reset the root element to make sure we see the loading state
+                        document.getElementById('root').innerHTML = '<div class="loading">Loading application... <div id="debug-info" style="color: #999; font-size: 12px; margin-top: 10px;">Starting to load components...</div></div>';
                         
-                        if (components.length > 0) {
-                            const componentName = components[0];
-                            console.log(`Found component ${componentName}. Rendering...`);
-                            root.render(React.createElement(window[componentName]));
+                        moduleScript.textContent = `
+                            // Debug imports
+                            console.log('Import map available:', Object.keys(Array.from(document.querySelectorAll('script[type="importmap"]')).map(s => JSON.parse(s.textContent).imports || {}).reduce((acc, imports) => ({ ...acc, ...imports }), {})));
+                            
+                            // Wait for Garden components to download before loading the app
+                            document.getElementById('debug-info').textContent = 'Waiting for Zendesk Garden components to load (5 seconds)...';
+                            
+                            // Pre-fetch Zendesk Garden Button to ensure it's downloaded
+                            console.log('Pre-fetching Garden Button component...');
+                            import('@zendeskgarden/react-buttons')
+                                .then(gardenButtons => {
+                                    console.log('Successfully pre-fetched Zendesk Garden components:', gardenButtons);
+                                })
+                                .catch(err => {
+                                    console.error('Error pre-fetching Garden components:', err);
+                                });
+                            
+                            // Delay app loading to ensure Garden components are downloaded
+                            setTimeout(() => {
+                                document.getElementById('debug-info').textContent = 'Loading app after Garden components delay...';
+                                
+                                import('${bundleUrl}')
+                                    .then(module => {
+                                        document.getElementById('debug-info').textContent = 'Module loaded, looking for App component...';
+                                        console.log('Module loaded:', module);
+                                        
+                                        const App = module.default || module;
+                                        console.log('App component:', App);
+                                        
+                                        if (typeof App !== 'function') {
+                                            document.getElementById('debug-info').textContent = 'Error: App is not a component function';
+                                            console.error('App is not a component function:', App);
+                                            return;
+                                        }
+                                        
+                                        document.getElementById('debug-info').textContent = 'Found App, attempting to render...';
+                                        const root = ReactDOM.createRoot(document.getElementById('root'));
+                                        
+                                        try {
+                                            console.log('About to render App');
+                                            root.render(React.createElement(App));
+                                            console.log('Render completed');
+                                            document.getElementById('debug-info').textContent = 'App rendered successfully';
+                                            // Force full reload of styles
+                                            document.getElementById('root').style.opacity = '0';
+                                            setTimeout(() => {
+                                                document.getElementById('root').style.opacity = '1';
+                                            }, 100);
+                                        } catch(e) {
+                                            document.getElementById('debug-info').textContent = 'Error rendering: ' + e.message;
+                                            console.error('Render error:', e);
+                                        }
+                                    })
+                                    .catch(error => {
+                                        document.getElementById('debug-info').textContent = 'Import error: ' + error.message;
+                                        console.error('Import error:', error);
+                                    });
+                            }, 5000); // 5 second delay
+                        `;
+                        
+                        // Add the module script to the document
+                        document.body.appendChild(moduleScript);
+                        console.log("Module script created and executed");
+                    } catch (moduleError) {
+                        console.error("Error creating module script:", moduleError);
+                        
+                        // Fallback to legacy approach
+                        console.log("Falling back to direct component rendering");
+                        
+                        const root = ReactDOM.createRoot(document.getElementById('root'));
+                        
+                        if (window.App) {
+                            console.log("Rendering App component");
+                            root.render(React.createElement(window.App));
                         } else {
-                            throw new Error("No React component found to render");
+                            // Look for any React component in the global namespace
+                            const components = Object.keys(window).filter(key => {
+                                return typeof window[key] === 'function' &&
+                                       key !== 'React' &&
+                                       key !== 'ReactDOM' &&
+                                       !key.startsWith('_');
+                            });
+                            
+                            if (components.length > 0) {
+                                const componentName = components[0];
+                                console.log(`Found component ${componentName}. Rendering...`);
+                                root.render(React.createElement(window[componentName]));
+                            } else {
+                                throw new Error("No React component found to render");
+                            }
                         }
+                        
+                        console.log("App mounted successfully");
                     }
-                    
-                    console.log("App mounted successfully");
-                    
                 } catch (error) {
                     console.error("Error executing bundle:", error);
                     throw error;
@@ -370,10 +506,31 @@
             }
         }
         
-        // Listen for messages containing file data
+        // Register the message listener
         window.addEventListener('message', handleMessage);
         
-        console.log("Message listener registered. Send data via window.postMessage()");
+        // Let parent know we're ready to receive messages
+        console.log("Message listener registered. Waiting for data via window.postMessage()");
+        
+        // Test message handler with mock data
+        if (window.location.search.includes('debug=true')) {
+            console.log("Debug mode: Sending test message");
+            // For debugging purposes only - simulate message from parent
+            const testEvent = {
+                data: {
+                    type: "data",
+                    data: {
+                        output: [{
+                            args: {
+                                filePath: "mock.js",
+                                fileContent: "console.log('Mock data loaded'); window.mockZafClient = {get: () => Promise.resolve({currentUser: {name: 'Test User'}})};"
+                            }
+                        }]
+                    }
+                }
+            };
+            setTimeout(() => handleMessage(testEvent), 1000);
+        }
     </script>
 </body>
 </html>
