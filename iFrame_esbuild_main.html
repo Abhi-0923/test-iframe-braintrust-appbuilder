@@ -217,14 +217,26 @@
                                 let normalizedPath = args.path;
                                 let resolveDir = args.resolveDir || '';
                                 
-                                // Remove ./ from the beginning
-                                if (normalizedPath.startsWith('./')) {
+                                // Handle parent directory paths (../)
+                                if (normalizedPath.startsWith('../')) {
+                                    // Split resolveDir into parts
+                                    const resolveParts = resolveDir.split('/');
+                                    // Remove the last part to go up one directory
+                                    resolveParts.pop();
+                                    resolveDir = resolveParts.join('/');
+                                    // Remove ../ from the beginning
+                                    normalizedPath = normalizedPath.substring(3);
+                                }
+                                // Handle current directory paths (./)
+                                else if (normalizedPath.startsWith('./')) {
                                     normalizedPath = normalizedPath.substring(2);
                                 }
                                 
                                 // Construct the full path
                                 const basePath = resolveDir ? `${resolveDir}/` : '';
                                 const fullPath = `${basePath}${normalizedPath}`;
+                                
+                                console.log("Resolving path:", args.path, "from dir:", resolveDir, "to:", fullPath);
                                 
                                 // Check if the file exists in our virtual file system
                                 const possiblePaths = [
