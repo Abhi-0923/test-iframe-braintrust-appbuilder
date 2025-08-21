@@ -1,0 +1,27 @@
+name: Call Claude API
+
+on:
+  workflow_dispatch:
+
+jobs:
+  call-claude-api:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Claude API
+        run: |
+          response=$(curl -X POST https://ai-gateway.zende.sk/bedrock/model/us.anthropic.claude-sonnet-4-20250514-v1:0/invoke \
+            -H "Authorization: Bearer uThtcBfnY3xMh7boCgu5ags0yvf" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "anthropic_version": "bedrock-2023-05-31",
+              "max_tokens": 1000,
+              "messages": [
+                {
+                  "role": "user",
+                  "content": "Hello, how are you?"
+                }
+              ]
+            }')
+          
+          echo "API Response:"
+          echo "$response"
