@@ -7,9 +7,12 @@ jobs:
   call-claude-api:
     runs-on: ubuntu-latest
     steps:
+      - name: Install jq
+        run: sudo apt-get install -y jq
+        
       - name: Call Claude API
         run: |
-          response=$(curl -X POST https://ai-gateway.zende.sk/bedrock/model/us.anthropic.claude-sonnet-4-20250514-v1:0/invoke \
+          response=$(curl -s -w "\n%{http_code}" -X POST https://ai-gateway.zende.sk/bedrock/model/us.anthropic.claude-sonnet-4-20250514-v1:0/invoke \
             -H "Authorization: Bearer uThtcBfnY3xMh7boCgu5ags0yvf" \
             -H "Content-Type: application/json" \
             -d '{
@@ -23,5 +26,18 @@ jobs:
               ]
             }')
           
-          echo "API Response:"
-          echo "$response"
+          # Extract status code from response
+          status_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$ d')
+          
+          echo "Status Code: $status_code"
+          if [ "$status_code" -eq 200 ]; then
+            echo "✓ API call successful"
+            echo "API Response:"
+            echo "$body" | jq '.'
+          else
+            echo "✗ API call failed"
+            echo "Error Response:"
+            echo "$body"
+            exit 1
+          fi

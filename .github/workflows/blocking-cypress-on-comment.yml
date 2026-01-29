@@ -1,0 +1,33 @@
+name: Cypress feature testing
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  dispatch-from-comment:
+    name: Cypress tests with arturos
+    runs-on: [self-hosted, zendesk-stable]
+    if: ${{ github.event_name == 'issue_comment' && startsWith(github.event.comment.body, 'cypress:') }}
+    env:
+      GITHUB_TOKEN: ${{ secrets.LOTUS_GITHUB_TOKEN }}
+      SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          filter: "blob:none"
+      - name: Trigger Blocking UI Tests with arturos from `cypress:test features` comment
+        uses: actions/github-script@v7
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+        with:
+          script: |
+            const workspace = process.env.GITHUB_WORKSPACE;
+            const { flow } = require(workspace + '/lotus_react/scripts/cypress/dispatchOnComment.js');
+
+            await flow({
+              context,
+              github,
+              workflowId: 'cypress-tests.yml',
+            });

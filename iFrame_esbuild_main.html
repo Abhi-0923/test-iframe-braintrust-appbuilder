@@ -85,14 +85,37 @@
         function handleMessage(event) {
             console.log("Message received:", event);
             const receivedData = event.data;
-            const files = receivedData.data?.output;
             
-            if (!files || !Array.isArray(files)) {
+            // Handle new data structure where files are in data.output.appCode as an object
+            let files = null;
+            
+            // Check for new structure: data.output.appCode (object with filePath keys)
+            const appCode = receivedData.data?.output?.appCode;
+            if (appCode && typeof appCode === 'object' && !Array.isArray(appCode)) {
+                console.log("Detected new appCode structure, converting to file array...");
+                // Convert object { "path": "content" } to array [{ args: { filePath, fileContent } }]
+                files = Object.entries(appCode).map(([filePath, fileContent]) => ({
+                    args: {
+                        filePath: filePath,
+                        fileContent: fileContent
+                    }
+                }));
+                console.log("Converted files:", files.map(f => f.args.filePath));
+            }
+            // Fallback to old structure: data.output as array
+            else if (Array.isArray(receivedData.data?.output)) {
+                files = receivedData.data.output;
+                console.log("Using legacy array structure");
+            }
+            
+            if (!files || !Array.isArray(files) || files.length === 0) {
                 console.log("No valid files received in message");
+                console.log("Received data structure:", JSON.stringify(receivedData, null, 2).substring(0, 500));
                 document.getElementById('root').innerHTML = `
                     <div class="error">
                         <h3>Error Loading Application</h3>
                         <p>No valid files received in the message.</p>
+                        <p style="font-size: 12px; color: #666;">Check console for data structure details.</p>
                     </div>
                 `;
                 return;
@@ -100,8 +123,11 @@
             
             console.log("Received files:", files.map(f => f.args.filePath));
             
-            // Filter out .md files
-            const outputFiles = files.filter(file => !file.args.filePath.endsWith('.md'));
+            // Filter out .md and .json files (non-executable)
+            const outputFiles = files.filter(file => 
+                !file.args.filePath.endsWith('.md') && 
+                !file.args.filePath.endsWith('.json')
+            );
             
             // Start the bundling process with the received files
             initializeAndBundleApp(outputFiles);
